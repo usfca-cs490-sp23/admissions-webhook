@@ -12,7 +12,8 @@ func IncorrectUsage() {
     "cluster using kind, and then apply a security admission webhook\n\nCommands:\n",
     "\tcluster\t\tCreate a kind cluster\n\tinfo\t\tGet cluster information\n",
     "\tinterface\tOpen Kubernetes web interface\n\tdeploy\t\tDeploy admissions",
-    "controller webhook")
+    "controller webhook\n\tshutdown [name]\tShutdown a kubernetes cluster\n\n",
+    "For more information, please visit https://github.com/usfca-cs490-sp23/admissions-webhook")
     // Terminate program processing
     os.Exit(0)
 }
