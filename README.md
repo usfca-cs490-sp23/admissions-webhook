@@ -19,6 +19,11 @@ name test-cluster
 
 To create a cluster, simply run:
 
+`go run main.go -cluster [name]`
+
+
+To create a cluster with additional configuration, simply run:
+
 `go run main.go -c [config file]`
 
 
