@@ -26,7 +26,6 @@ func TestEmptyArgs(t *testing.T) {
     }
 }
 
-
 /* Test case to check that all external dependencies are present on the system */
 func TestDependencies(t * testing.T) {
     // Array of dependencies
@@ -50,3 +49,25 @@ func TestDependencies(t * testing.T) {
         }
     }
 }
+
+/* Test case to check container manager is present (docker or podman) */
+func TestContainerProvider(t * testing.T) {
+    // Array of two valid container managers (NOTE: podmans is experimental with kind)
+    dependencies := []string{"docker", "podman"}
+
+    // Loop through every dependency in array
+    for _, ele := range dependencies {
+        // Construct a string that is returned from calling an unknown package in a shell
+        invalidSubstr := fmt.Sprintf("%s: command not found", ele)
+        // Run a command with just the package and -h flag
+        output, _ := exec.Command(ele, "-h").Output()
+
+        // If the command output does not contain "[package]: command not found", then pass the test
+        if !strings.Contains(string(output), invalidSubstr) {
+            return
+        }
+    }
+    // Fail test case if neither provider was found
+    t.Errorf("Error while running TestContainer: neither docker nor podman installed or present on path")
+}
+
