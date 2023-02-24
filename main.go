@@ -5,6 +5,7 @@ import (
     "flag"
     "github.com/usfca-cs490/admissions-webhook/lib/cluster"
     "github.com/usfca-cs490/admissions-webhook/lib/util"
+    "github.com/usfca-cs490/admissions-webhook/lib/keygen"
 )
 
 /* Main method */
@@ -40,7 +41,7 @@ func main() {
     } else if util.IsFlagRaised("interface") {  // Launch kind cluster interface
         util.NotYetImplemented("interface")
     } else if util.IsFlagRaised("deploy") {     // Apply webhook to cluster
-        util.NotYetImplemented("deploy")
+        keygen.CreatePem()
     } else if util.IsFlagRaised("shutdown") {   // Delete a cluster with argued name
         cluster.Shutdown(*shutdown)
     }
