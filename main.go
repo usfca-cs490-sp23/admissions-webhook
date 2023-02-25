@@ -41,7 +41,14 @@ func main() {
     } else if util.IsFlagRaised("interface") {  // Launch kind cluster interface
         util.NotYetImplemented("interface")
     } else if util.IsFlagRaised("deploy") {     // Apply webhook to cluster
-        keygen.CreatePem()
+        pemCert, pemKey := keygen.CreatePem("./lib/keygen/cert.pem", "./lib/keygen/key.pem")
+
+        data := map[string][]byte {
+            "./webhook/secrets/cert.txt": pemCert,
+            "./webhook/secrets/key.txt":  pemKey,
+        }
+
+        keygen.ConvertPEMToB64(data)
     } else if util.IsFlagRaised("shutdown") {   // Delete a cluster with argued name
         cluster.Shutdown(*shutdown)
     }
