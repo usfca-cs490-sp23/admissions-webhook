@@ -102,7 +102,7 @@ func genSerialNum() *big.Int {
 }
 
 /* Exported method to create cert.pem and key.pem files */
-func CreatePem(certPath, keyPath string) ([]byte, []byte, []byte) {
+func CreatePEMs() ([]byte, []byte, []byte) {
 	// generate the CA and CAbundle
 	caBundle := genCABundle()
 
@@ -151,6 +151,5 @@ func ConvertPEMToB64(data map[string][]byte) {
 			log.Fatal(err)
 		}
 
-		log.Printf("wrote %s\n", outfile)
 	}
 }

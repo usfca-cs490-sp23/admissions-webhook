@@ -41,7 +41,7 @@ func main() {
 	} else if util.IsFlagRaised("interface") { // Launch kind cluster interface
 		util.NotYetImplemented("interface")
 	} else if util.IsFlagRaised("deploy") { // Apply webhook to cluster
-		pemCert, pemKey, caBundle := keygen.CreatePem("./lib/keygen/cert.pem", "./lib/keygen/key.pem")
+		pemCert, pemKey, caBundle := keygen.CreatePEMs()
 
 		data := map[string][]byte{
 			"./webhook/secrets/cert.txt": pemCert,
