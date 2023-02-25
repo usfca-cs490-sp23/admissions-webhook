@@ -1,9 +1,11 @@
 package keygen
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/base64"
@@ -31,8 +33,44 @@ var (
 		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
 		BasicConstraintsValid: true,
 	}
-	// Test commit
+
+	ca = &x509.Certificate{
+		SerialNumber: genSerialNum(),
+		Subject: pkix.Name{
+			Organization: []string{"usfca-cs490"},
+		},
+		NotBefore:             time.Now(),
+		NotAfter:              time.Now().AddDate(1, 0, 0),
+		IsCA:                  true,
+		ExtKeyUsage:           []x509.ExtKeyUsage{x509.ExtKeyUsageClientAuth, x509.ExtKeyUsageServerAuth},
+		KeyUsage:              x509.KeyUsageDigitalSignature | x509.KeyUsageCertSign,
+		BasicConstraintsValid: true,
+	}
 )
+
+// A cabundle is just the ca.crt (the CA's certificate) file in base64 format
+func genCABundle() {
+	// NOTE: This function is based off of: Velotio's CAbundle tutorial (https://www.velotio.com/engineering-blog/managing-tls-certificate-for-kubernetes-admission-webhook)
+	// CA private key
+	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	// Make the CA cert (stored into caBytes)
+	caBytes, err := x509.CreateCertificate(rand.Reader, &template, ca, &caPrivKey.PublicKey, caPrivKey)
+	if err != nil {
+		log.Fatalf(err.Error())
+	}
+
+	// Encode the ca cert to .pem format
+	// TODO: This is the bytebuffer I need to get the byteArray from to pass to base64 (I may not need to pass to base64)
+	var caPEM = new(bytes.Buffer)
+	_ = pem.Encode(caPEM, &pem.Block{
+		Type:  "CERTIFICATE",
+		Bytes: caBytes,
+	})
+}
 
 /* Method to generate a private ecdsa private key */
 func genPrivateKey() *ecdsa.PrivateKey {
@@ -65,7 +103,7 @@ func CreatePem(certPath, keyPath string) ([]byte, []byte) {
 	// Generate a private key
 	privateKey := genPrivateKey()
 	// Create the certificate in x509 format from privateKey
-	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &template, &privateKey.PublicKey, privateKey)
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, ca, &privateKey.PublicKey, privateKey)
 	// Check for errors
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %v", err)
