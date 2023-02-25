@@ -34,7 +34,7 @@ var (
 		BasicConstraintsValid: true,
 	}
 
-	ca = &x509.Certificate{
+	ca = x509.Certificate{
 		SerialNumber: genSerialNum(),
 		Subject: pkix.Name{
 			Organization: []string{"usfca-cs490"},
@@ -49,7 +49,7 @@ var (
 )
 
 // A cabundle is just the ca.crt (the CA's certificate) file in base64 format
-func genCABundle() {
+func genCABundle() []byte {
 	// NOTE: This function is based off of: Velotio's CAbundle tutorial (https://www.velotio.com/engineering-blog/managing-tls-certificate-for-kubernetes-admission-webhook)
 	// CA private key
 	caPrivKey, err := rsa.GenerateKey(rand.Reader, 4096)
@@ -58,18 +58,21 @@ func genCABundle() {
 	}
 
 	// Make the CA cert (stored into caBytes)
-	caBytes, err := x509.CreateCertificate(rand.Reader, &template, ca, &caPrivKey.PublicKey, caPrivKey)
+	caBytes, err := x509.CreateCertificate(rand.Reader, &template, &ca, &caPrivKey.PublicKey, caPrivKey)
 	if err != nil {
 		log.Fatalf(err.Error())
 	}
 
 	// Encode the ca cert to .pem format
-	// TODO: This is the bytebuffer I need to get the byteArray from to pass to base64 (I may not need to pass to base64)
 	var caPEM = new(bytes.Buffer)
 	_ = pem.Encode(caPEM, &pem.Block{
 		Type:  "CERTIFICATE",
 		Bytes: caBytes,
 	})
+
+	// get the result of encoding the CA cert into .pem (which is now stored in a byte slice)
+	caRaw := caPEM.Bytes()
+	return caRaw
 }
 
 /* Method to generate a private ecdsa private key */
@@ -99,11 +102,14 @@ func genSerialNum() *big.Int {
 }
 
 /* Exported method to create cert.pem and key.pem files */
-func CreatePem(certPath, keyPath string) ([]byte, []byte) {
+func CreatePem(certPath, keyPath string) ([]byte, []byte, []byte) {
+	// generate the CA and CAbundle
+	caBundle := genCABundle()
+
 	// Generate a private key
 	privateKey := genPrivateKey()
 	// Create the certificate in x509 format from privateKey
-	certBytes, err := x509.CreateCertificate(rand.Reader, &template, ca, &privateKey.PublicKey, privateKey)
+	certBytes, err := x509.CreateCertificate(rand.Reader, &template, &ca, &privateKey.PublicKey, privateKey)
 	// Check for errors
 	if err != nil {
 		log.Fatalf("Failed to create certificate: %v", err)
@@ -129,7 +135,7 @@ func CreatePem(certPath, keyPath string) ([]byte, []byte) {
 		log.Fatal("Failed to encode key to PEM")
 	}
 
-	return pemCert, pemKey
+	return pemCert, pemKey, caBundle
 }
 
 /* Convert any file's contents to base64 using base64 utility */
