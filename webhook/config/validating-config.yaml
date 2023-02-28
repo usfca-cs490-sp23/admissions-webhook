@@ -1,0 +1,27 @@
+# Borrowed from https://github.com/slackhq/simple-kubernetes-webhook/blob/main/dev/manifests/cluster-config/validating.config.yaml
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: "490-webhook"
+webhooks:
+  - name: "490-webhook"
+    namespaceSelector:
+      matchLabels:
+        admission-webhook: enabled
+    rules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE"]
+        resources: ["pods"]
+        scope: "*"
+    clientConfig:
+      service:
+        namespace: default
+        name: 490-webhook
+        path: /validate-pods
+        port: 443
+      caBundle: |
+
+    admissionReviewVersions: ["v1"]
+    sideEffects: None
+    timeoutSeconds: 2
