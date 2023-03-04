@@ -2,7 +2,7 @@ package tests
 
 import (
     "testing"
-	"github.com/usfca-cs490/admissions-webhook/lib/keygen"
+	"github.com/usfca-cs490/admissions-webhook/pkg/tls"
     "io/ioutil"
     "log"
     "os"
@@ -28,7 +28,7 @@ func errorCheck(err error) {
 /* Method to create a file from the list */
 func createFiles() {
     // Generate PEM data
-    pemCert, pemKey, caBundle := keygen.CreatePEMs()
+    pemCert, pemKey, caBundle := tls.CreatePEMs()
 
     // Store PEM data and file to write to after encoding in a map
     data := map[string][]byte {
@@ -38,7 +38,7 @@ func createFiles() {
     }
 
     // Convert from PEM to base64 and write to files in data map
-    keygen.ConvertPEMToB64(data)
+    tls.ConvertPEMToB64(data)
 }
 
 /* Method to delete all of the files created for testing */

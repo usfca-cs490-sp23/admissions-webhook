@@ -4,7 +4,7 @@ import (
     "os"
     "os/exec"
     "log"
-    "github.com/usfca-cs490/admissions-webhook/lib/util"
+    "github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
 
 /* Method to check kind cluster info */

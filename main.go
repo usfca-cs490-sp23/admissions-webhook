@@ -2,14 +2,15 @@ package main
 
 import (
 	"flag"
-	"github.com/usfca-cs490/admissions-webhook/lib/cluster"
-	"github.com/usfca-cs490/admissions-webhook/lib/keygen"
-	"github.com/usfca-cs490/admissions-webhook/lib/util"
+	"github.com/usfca-cs490/admissions-webhook/pkg/cluster"
+	"github.com/usfca-cs490/admissions-webhook/pkg/tls"
+	"github.com/usfca-cs490/admissions-webhook/pkg/util"
+	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
 	"os"
 )
 
-/* Main method */
-func main() {
+/* Startup method */
+func Startup() {
 	// Config file flag
 	config_file := flag.String("c", "", "path-to-config-file")
 	// Cluster name flag
@@ -41,7 +42,7 @@ func main() {
 	} else if util.IsFlagRaised("interface") { // Launch kind cluster interface
 		util.NotYetImplemented("interface")
 	} else if util.IsFlagRaised("deploy") { // Apply webhook to cluster
-		pemCert, pemKey, caBundle := keygen.CreatePEMs()
+		pemCert, pemKey, caBundle := tls.CreatePEMs()
 
 		data := map[string][]byte{
 			"./webhook/secrets/cert.txt": pemCert,
@@ -49,7 +50,9 @@ func main() {
 			"./webhook/secrets/cab.txt":  caBundle,
 		}
 
-		keygen.ConvertPEMToB64(data)
+		tls.ConvertPEMToB64(data)
+
+        webhook.Build()
 	} else if util.IsFlagRaised("shutdown") { // Delete a cluster with argued name
 		cluster.Shutdown(*shutdown)
 	}

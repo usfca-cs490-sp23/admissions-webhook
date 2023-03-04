@@ -1,10 +1,4 @@
-// Callaghan Donnelly, Jackson Crawford, Haley Lenander
-// Concepts and basic structure based off of https://github.com/slackhq/simple-kubernetes-webhook
-
-// NOTE: ANY POD GIVEN BY USERS MUST BE IN "Imperative object configuration" OR "Declarative object configuration"
-// AS DEFINED BYT THE KUBERNETES DOCUMENTATION: https://kubernetes.io/docs/concepts/overview/working-with-objects/object-management/
-
-package main
+package webhook
 
 import (
 	"bytes"
@@ -13,20 +7,15 @@ import (
 	"github.com/sirupsen/logrus"
 	"net/http"
 	"os"
+    "github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// TODO: Return a DashboardUpdate struct with the result of checking the internals of the pod
-type DashboardUpdate struct {
-	// TODO: make a list of all SBOMs from the pod to add to DB / check with grype
-	// TODO:
-	Denied bool
-}
 
-func main() {
+func Build() {
 	// handle our core application
 	http.HandleFunc("/validate-pods", ValidatePod)
 
@@ -45,14 +34,14 @@ func main() {
 	}
 }
 
-// ValidatePod validates an admission request and then writes an admission review to `w`
+// ValidatePod validates an admission request and then writes an admission review to response writer
 func ValidatePod(w http.ResponseWriter, r *http.Request) {
 	// special logging stuff
 	logger := logrus.WithField("uri", r.RequestURI)
 	logger.Debug("received validation request")
 
 	// get the information from the request
-	in, err := parseRequest(*r)
+	in, err := reviewAdmission(*r)
 	// if there was an error, handle it here
 	if err != nil {
 		logger.Error(err)
@@ -91,7 +80,7 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 
 // Either returns an admission review struct or an error
 // parseRequest extracts an AdmissionReview from an http.Request if possible
-func parseRequest(r http.Request) (*admissionv1.AdmissionReview, error) {
+func reviewAdmission(r http.Request) (*admissionv1.AdmissionReview, error) {
 	// Check if the given content is JSON, and if not, then return nil and log what kind of content was given
 	if r.Header.Get("Content-Type") != "application/json" {
 		return nil, fmt.Errorf("Content-Type: %q should be %q",
@@ -129,18 +118,18 @@ func parseRequest(r http.Request) (*admissionv1.AdmissionReview, error) {
 
 // ValidatePodReview Take a K8s admission request and return a review struct based on,
 // whether or not it is accepted into the cluster
-func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.AdmissionReview, DashboardUpdate, error) {
+func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.AdmissionReview, dashboard.DashboardUpdate, error) {
 	pod, err := extractPod(request)
 	if err != nil {
 		//e := fmt.Sprintf("could not parse pod in admission review request: %v", err)
-		return nil, badPodDashUpdate(), err
+		return nil, dashboard.BadPodDashUpdate(), err
 	}
 
 	//v := validation.NewValidator(a.Logger)
 	podDecision, err := checkPodImages(pod)
 	if err != nil {
 		//e := fmt.Sprintf("could not validate pod: %v", err)
-		return nil, badPodDashUpdate(), err
+		return nil, dashboard.BadPodDashUpdate(), err
 	}
 
 	// if the pod is scanned and allowed, then return this review struct
@@ -190,38 +179,3 @@ func extractPod(request *admissionv1.AdmissionRequest) (*corev1.Pod, error) {
 	return &pod, nil
 }
 
-// TODO: add all functionality
-// checkPodImages pulls out all images from a pod struct and sends them to the DB interface,
-// which then checks if an SBOM exists for each (if not, then sends the image to syft) and then,
-// based off the result of grype (which should return to this function) and says what CVEs
-// exist within each image, and if any of those CVEs are unacceptable, the whole pod is Denied
-func checkPodImages(pod *corev1.Pod) (DashboardUpdate, error) {
-	// TODO: pod.Spec.ImagePullSecrets // should allow to get all images from a pod? (maybe just secret ones?)
-	// get the list of all given containers in this pod
-	containers := pod.Spec.Containers
-	// get the number of images
-	sliceSize := len(containers)
-	// setup an empty slice to hold each image
-	imageSlice := make([]string, sliceSize)
-
-	// TODO: this is a shit way of doing this, but I just want to see it work right now, clean this up later
-	counter := 0
-	// extract all images and store in the list
-	for _ = range containers {
-		imageSlice[counter] = containers[counter].Image
-		counter++
-	}
-
-	singleImage := pod.Spec.Containers[0].Image
-	fmt.Println(singleImage)
-
-	// TODO: pass each image to the DB interface from here and receive the grype results
-
-	// currently allows any pod into cluster
-	return DashboardUpdate{Denied: false}, nil
-}
-
-// TODO: expand this to have field values expressing that the pod could not be examined
-func badPodDashUpdate() DashboardUpdate {
-	return DashboardUpdate{Denied: true}
-}
