@@ -15,24 +15,34 @@ CS 490 Senior Team Project
 .
 ├── README.md
 ├── go.mod
-├── lib
+├── go.sum
+├── main.go
+├── pkg
 │   ├── cluster
 │   │   ├── cluster_utils.go
 │   │   ├── shutdown.go
 │   │   └── startup.go
-│   ├── keygen
-│   │   └── keygen.go
-│   ├── tests
-│   │   ├── startup_test.go
-│   │   └── tls_test.go
-│   └── util
-│       └── util.go
-├── main.go
-└── webhook
-    ├── config
-    │   ├── app.ns.yaml
-    │   └── validating-config.yaml
-    └── secrets
+│   ├── dashboard
+│   │   └── dashboard.go
+│   ├── tls
+│   │   ├── new_cert_sript.sh
+│   │   └── tls.go
+│   ├── util
+│   │   └── util.go
+│   └── webhook
+│       ├── build.go
+│       ├── config
+│       │   ├── app.ns.yaml
+│       │   └── validating-config.yaml
+│       ├── secrets
+│       │   ├── cab.txt
+│       │   ├── cert.txt
+│       │   ├── fakeCa.txt
+│       │   └── key.txt
+│       └── validate.go
+└── tests
+    ├── startup_test.go
+    └── tls_test.go
 ```
 
 ## Usage
