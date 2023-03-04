@@ -3,7 +3,6 @@ package main
 import (
 	"flag"
 	"github.com/usfca-cs490/admissions-webhook/pkg/cluster"
-	"github.com/usfca-cs490/admissions-webhook/pkg/tls"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
 	"os"
@@ -42,16 +41,6 @@ func Startup() {
 	} else if util.IsFlagRaised("interface") { // Launch kind cluster interface
 		util.NotYetImplemented("interface")
 	} else if util.IsFlagRaised("deploy") { // Apply webhook to cluster
-		pemCert, pemKey, caBundle := tls.CreatePEMs()
-
-		data := map[string][]byte{
-			"./webhook/secrets/cert.txt": pemCert,
-			"./webhook/secrets/key.txt":  pemKey,
-			"./webhook/secrets/cab.txt":  caBundle,
-		}
-
-		tls.ConvertPEMToB64(data)
-
         webhook.Build()
 	} else if util.IsFlagRaised("shutdown") { // Delete a cluster with argued name
 		cluster.Shutdown(*shutdown)

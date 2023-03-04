@@ -45,7 +45,5 @@ echo
 rm ca.key ca.srl server.crt server.csr server.key server.v3.ext
 
 echo ">> MutatingWebhookConfiguration caBundle:"
-cat ca.crt | base64 | fold
-
-# TODO: uncomment/move somewhere else once yaml patching is done with the cabundle
-#rm ca.crt
+cat ca.crt | base64 | fold > cab64.crt
+rm ca.crt
