@@ -37,8 +37,8 @@ kubectl create secret tls basic-webhook-tls \
   --cert=server.crt \
   --key=server.key \
   --dry-run=client -o yaml \
-  > ../../webhook/config/webhook.tls.secret.yaml
-#   ^ The dots should allow it to go up multiple directory levels to get to the webhook folder
+  > ../webhook/deploy-rules/webhook.tls.secret.yaml
+#   ^ Go up to pkg, then into webhook, then into deploy-rules and write the file
 
 echo
 

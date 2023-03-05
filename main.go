@@ -4,7 +4,7 @@ import (
 	"flag"
 	"github.com/usfca-cs490/admissions-webhook/pkg/cluster"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
-	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
+	webhook "github.com/usfca-cs490/admissions-webhook/pkg/webhook"
 	"os"
 )
 
@@ -41,8 +41,12 @@ func Startup() {
 	} else if util.IsFlagRaised("interface") { // Launch kind cluster interface
 		util.NotYetImplemented("interface")
 	} else if util.IsFlagRaised("deploy") { // Apply webhook to cluster
-        webhook.Build()
+		webhook.Build()
 	} else if util.IsFlagRaised("shutdown") { // Delete a cluster with argued name
 		cluster.Shutdown(*shutdown)
 	}
+}
+
+func main() {
+	webhook.Build()
 }
