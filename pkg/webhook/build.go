@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sirupsen/logrus"
+	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 	"net/http"
 	"os"
-    "github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 
 	admissionv1 "k8s.io/api/admission/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -22,7 +22,7 @@ func Build() {
 	// start the server
 	// listens to clear text http on port 8080 unless TLS env var is set to "true" (which it should be)
 	if os.Getenv("TLS") == "true" {
-		// TODO: see if these are based off of the k8s admin setup or something else
+		// these are the mount path in the webhook.deploy.yaml file for tls
 		cert := "/etc/admission-webhook/tls/tls.crt"
 		key := "/etc/admission-webhook/tls/tls.key"
 
@@ -178,4 +178,3 @@ func extractPod(request *admissionv1.AdmissionRequest) (*corev1.Pod, error) {
 	// otherwise return the
 	return &pod, nil
 }
-
