@@ -37,7 +37,7 @@ kubectl create secret tls the-captains-hook-tls \
   --cert=server.crt \
   --key=server.key \
   --dry-run=client -o yaml \
-  > ../webhook/deploy-rules/webhook.tls.secret.yaml
+  > ./pkg/webhook/deploy-rules/webhook.tls.secret.yaml
 #   ^ Go up to pkg, then into webhook, then into deploy-rules and write the file
 
 echo
@@ -45,5 +45,5 @@ echo
 rm ca.key ca.srl server.crt server.csr server.key server.v3.ext
 
 echo ">> MutatingWebhookConfiguration caBundle:"
-cat ca.crt | base64 | fold > cab64.crt
+cat ca.crt | base64 | fold > ./pkg/tls/cab64.crt
 rm ca.crt
