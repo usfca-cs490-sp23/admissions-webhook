@@ -1,5 +1,5 @@
 CANAME=ca
-DNS_Name=basic-webhook.default.svc
+DNS_Name=the-captains-hook.default.svc
 
 # generate aes encrypted private key
 openssl genrsa -aes256 -out $CANAME.key 4096
@@ -22,7 +22,7 @@ keyUsage = digitalSignature, nonRepudiation, keyEncipherment, dataEncipherment
 subjectAltName = @alt_names
 [alt_names]
 DNS.1 = $DNS_Name
-DNS.2 = basic-webhook1.default.svc
+DNS.2 = the-captains-hook1.default.svc
 IP.1 = 192.168.1.1
 IP.2 = 192.168.2.1
 EOF
@@ -33,19 +33,17 @@ openssl x509 -req -in $MYCERT.csr -CA $CANAME.crt -CAkey $CANAME.key -CAcreatese
 # takes the server cert and server key and makes the secret yaml file
 echo
 echo ">> Generating kube secrets..."
-kubectl create secret tls basic-webhook-tls \
+kubectl create secret tls the-captains-hook-tls \
   --cert=server.crt \
   --key=server.key \
   --dry-run=client -o yaml \
-  > ../../webhook/config/webhook.tls.secret.yaml
-#   ^ The dots should allow it to go up multiple directory levels to get to the webhook folder
+  > ../webhook/deploy-rules/webhook.tls.secret.yaml
+#   ^ Go up to pkg, then into webhook, then into deploy-rules and write the file
 
 echo
 
 rm ca.key ca.srl server.crt server.csr server.key server.v3.ext
 
 echo ">> MutatingWebhookConfiguration caBundle:"
-cat ca.crt | base64 | fold
-
-# TODO: uncomment/move somewhere else once yaml patching is done with the cabundle
-#rm ca.crt
+cat ca.crt | base64 | fold > cab64.crt
+rm ca.crt

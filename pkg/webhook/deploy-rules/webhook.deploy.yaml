@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: the-captains-hook
+  name: the-captains-hook
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: the-captains-hook
+  template:
+    metadata:
+      labels:
+        app: the-captains-hook
+    spec:
+      tolerations:
+        - key: acme.com/lifespan-remaining
+          operator: Exists
+          effect: NoSchedule
+      containers:
+        - image: the-captains-hook:latest
+          imagePullPolicy: Never
+          name: the-captains-hook
+          env:
+            - name: TLS
+              value: "true"
+            - name: LOG_LEVEL
+              value: "trace"
+            - name: LOG_JSON
+              value: "false"
+          volumeMounts:
+            - name: tls
+              mountPath: "/etc/admission-webhook/tls"
+              readOnly: true
+      volumes:
+        - name: tls
+          secret:
+            secretName: the-captains-hook-tls

@@ -1,10 +1,9 @@
-# Borrowed from https://github.com/slackhq/simple-kubernetes-webhook/blob/main/dev/manifests/cluster-config/validating.config.yaml
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingWebhookConfiguration
 metadata:
-  name: "490-webhook"
+  name: "the-captains-hook.acme.com"
 webhooks:
-  - name: "490-webhook"
+  - name: "the-captains-hook.acme.com"
     namespaceSelector:
       matchLabels:
         admission-webhook: enabled
@@ -17,7 +16,7 @@ webhooks:
     clientConfig:
       service:
         namespace: default
-        name: 490-webhook
+        name: the-captains-hook
         path: /validate-pods
         port: 443
       caBundle: |

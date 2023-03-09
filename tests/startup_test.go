@@ -6,7 +6,7 @@ import (
     "os"
     "os/exec"
     "strings"
-    "github.com/usfca-cs490/admissions-webhook/lib/util"
+    "github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
 
 /* Test case for no arguments */
