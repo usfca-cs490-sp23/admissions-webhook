@@ -18,4 +18,4 @@ FROM scratch AS run
 
 COPY --from=build /work/bin/admission-webhook /usr/local/bin/
 
-CMD ["admission-webhook"]
+CMD ["admission-webhook","-hook"]

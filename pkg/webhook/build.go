@@ -14,7 +14,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-/* Build the webhook */
+// Build builds the webhook
 func Build() {
 	// handle our core application
 	http.HandleFunc("/validate-pods", ValidatePod)
@@ -79,7 +79,7 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 }
 
 // Either returns an admission review struct or an error
-// parseRequest extracts an AdmissionReview from an http.Request if possible
+// reviewAdmission extracts an AdmissionReview from an http.Request if possible
 func reviewAdmission(r http.Request) (*admissionv1.AdmissionReview, error) {
 	// Check if the given content is JSON, and if not, then return nil and log what kind of content was given
 	if r.Header.Get("Content-Type") != "application/json" {

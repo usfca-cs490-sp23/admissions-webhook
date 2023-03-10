@@ -9,61 +9,55 @@ CS 490 Senior Team Project
 
 `go test ./lib/tests -v`
 
+
+## Usage
+
+This interface provides a wrapper for kind, so that it is easy to create and destroy a cluster. This can be done with the `-create` flag, so the following will create a cluster that the hook can easily access:
+
+`go run main.go -create`
+
+From here, applying the webhook is as easy as running the following:
+
+`go run main.go -deploy`
+
+These can be combined to create the cluster and then deploy the hook to it with `go run main.go -create -deploy`
+
+Shutting down the cluster can be done with another wrapper method:
+
+`go run main.go -shutdown`
+
+A full list of functionalities can be seen by running `go run main.go -h`
+
 ## Structure
 
 ```
 .
-├── README.md
+├── Dockerfile
 ├── go.mod
 ├── go.sum
 ├── main.go
 ├── pkg
-│   ├── cluster
-│   │   ├── cluster_utils.go
-│   │   ├── shutdown.go
-│   │   └── startup.go
+│   ├── cluster-config
+│   │   ├── app.ns.yaml
+│   │   ├── validating.config.template.yaml
+│   │   └── validating.config.yaml
 │   ├── dashboard
 │   │   └── dashboard.go
+│   ├── kind
+│   │   ├── cluster_utils.go
+│   │   └── kind.cluster.yaml
 │   ├── tls
-│   │   ├── new_cert_sript.sh
-│   │   └── tls.go
+│   │   └── gen_certs.sh
 │   ├── util
 │   │   └── util.go
 │   └── webhook
 │       ├── build.go
-│       ├── config
-│       │   ├── app.ns.yaml
-│       │   └── validating-config.yaml
-│       ├── secrets
-│       │   ├── cab.txt
-│       │   ├── cert.txt
-│       │   ├── fakeCa.txt
-│       │   └── key.txt
+│       ├── deploy-rules
+│       │   ├── webhook.deploy.yaml
+│       │   ├── webhook.svc.yaml
+│       │   └── webhook.tls.secret.yaml
 │       └── validate.go
+├── README.md
 └── tests
-    ├── startup_test.go
-    └── tls_test.go
+    └── startup_test.go
 ```
-
-## Usage
-
-This interface currently only supports reading a basic config for launching a cluster. The only supported option is `name`. For example, config.txt may look like this:
-
-```
-name test-cluster
-```
-
-To create a cluster, simply run:
-
-`go run main.go -cluster [name]`
-
-
-To create a cluster with additional configuration, simply run:
-
-`go run main.go -c [config file]`
-
-
-To shutdown the cluster, run:
-
-`go run main.go shutdown [name]`
-

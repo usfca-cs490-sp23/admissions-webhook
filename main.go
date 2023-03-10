@@ -2,26 +2,28 @@ package main
 
 import (
 	"flag"
-	"github.com/usfca-cs490/admissions-webhook/pkg/cluster"
+	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
-	webhook "github.com/usfca-cs490/admissions-webhook/pkg/webhook"
+	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
 	"os"
 )
 
 /* Startup method */
-func Startup() {
-	// Config file flag
-	config_file := flag.String("c", "", "path-to-config-file")
+func main () {
 	// Cluster name flag
-	cluster_name := flag.String("cluster", "cluster", "cluster-name")
+	flag.Bool("create", false, "create a kind cluster")
 	// Info flag
 	flag.Bool("info", false, "get cluster info")
 	// Interface flag
-	flag.Bool("interface", false, "launch cluster interface")
+	flag.Bool("dashboard", false, "launch cluster dashboard")
 	// Deploy webhook flag
 	flag.Bool("deploy", false, "apply admissions webhook to cluster")
+    // Print webhook pod status flag
+    flag.Bool("hook", false, "start webhook, should only be called by Docker container")
 	// Shutdown flag
-	shutdown := flag.String("shutdown", "cluster", "name-of-cluster")
+    flag.Bool("status", false, "print out description of webhook pod")
+    // Build hook flag, should only be called by Docker container
+	flag.Bool("shutdown", false, "shutdown the cluster")
 
 	// Check for flags
 	flag.Parse()
@@ -31,22 +33,45 @@ func Startup() {
 		util.Usage()
 	}
 
-	// Check second command line argument
-	if util.IsFlagRaised("c") { // Build cluster and webhook from config file
-		cluster.Startup(*config_file)
-	} else if util.IsFlagRaised("cluster") { // Create cluster with argued name
-		cluster.CreateCluster(*cluster_name)
-	} else if util.IsFlagRaised("info") { // Show kind info command output
-		util.NotYetImplemented("info")
-	} else if util.IsFlagRaised("interface") { // Launch kind cluster interface
-		util.NotYetImplemented("interface")
-	} else if util.IsFlagRaised("deploy") { // Apply webhook to cluster
-		webhook.Build()
-	} else if util.IsFlagRaised("shutdown") { // Delete a cluster with argued name
-		cluster.Shutdown(*shutdown)
+    // Create cluster with argued name
+	if util.IsFlagRaised("create") {
+		kind.CreateCluster()
+	}
+
+    // Show kind info command output
+    if util.IsFlagRaised("info") {
+        kind.Info()
+	}
+
+    // Launch kind cluster interface
+    if util.IsFlagRaised("interface") {
+		util.NotYetImplemented("dashboard")
+	}
+    
+    // Apply webhook to cluster
+    if util.IsFlagRaised("deploy") {
+        // Build and load docker image
+        kind.BuildLoadHookImage("the-captains-hook", "latest", ".")
+        // Gen certs
+        kind.GenCerts()
+        // Apply configs
+        kind.ApplyConfig("./pkg/cluster-config")
+        kind.ApplyConfig("./pkg/webhook/deploy-rules")
+    }
+    
+    // Build the webhook
+    if util.IsFlagRaised("hook") {
+        webhook.Build()
+	}
+
+    // Print out the hook pod's status
+    if util.IsFlagRaised("status") {
+        kind.DescribeHook("the-captains-hook")
+    }
+
+    // Delete a cluster with argued name
+    if util.IsFlagRaised("shutdown") {
+		kind.Shutdown()
 	}
 }
 
-func main() {
-	webhook.Build()
-}
