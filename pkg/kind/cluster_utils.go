@@ -55,6 +55,7 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	fmt.Println("Building Docker image", (image_name + ":" + version), "from Dockerfile at", dfile_path)
 
 	// Create command
+	os.Setenv("DOCKER_BUILDKIT", "1")
 	cmd := exec.Command("docker", "build", "-t", (image_name + ":" + version), dfile_path)
 	cmd.Stderr = os.Stderr
 
@@ -77,20 +78,20 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 
 // GenCerts Method to generate TLS certifications and cluster configs
 func GenCerts() {
-	// Status print
-	fmt.Println("Generating TLS certificate, key, and CA bundle and injecting into configuration files")
+    // Status print
+    fmt.Println("Generating TLS certificate, key, and CA bundle and injecting into configuration files")
 
-	// Create command
-	cmd := exec.Command("/bin/sh", "./pkg/tls/gen_certs.sh")
+    // Create command
+    cmd := exec.Command("/bin/sh", "./pkg/tls/gen_certs.sh")
 
-	// Run and handle errors
-	err := cmd.Run()
-	// Crash if error
-	util.FatalErrorCheck(err)
+    // Run and handle errors
+    err := cmd.Run()
+    // Crash if error
+    util.FatalErrorCheck(err)
 
-	// Inject CA Bundle into validating.config.yaml
-	util.InjectYamlCA("./pkg/cluster-config/validating.config.yaml",
-		"./pkg/cluster-config/validating.config.template.yaml", "./pkg/tls/cab64.crt")
+    // Inject CA Bundle into validating.config.yaml
+    util.InjectYamlCA("./pkg/cluster-config/validating.config.yaml",
+    "./pkg/cluster-config/validating.config.template.yaml", "./pkg/tls/cab64.crt")
 }
 
 // ApplyConfig Method to apply a configuration YAML file to a cluster using kubectl
