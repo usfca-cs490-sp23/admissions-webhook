@@ -5,7 +5,6 @@ import (
 	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
-	"os"
 )
 
 /* Startup method */
@@ -27,11 +26,6 @@ func main () {
 
 	// Check for flags
 	flag.Parse()
-
-	// Usage check
-	if len(os.Args) < 2 {
-		util.Usage()
-	}
 
     // Create cluster with argued name
 	if util.IsFlagRaised("create") {
