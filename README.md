@@ -7,7 +7,7 @@ CS 490 Senior Team Project
 
 2. (Optional) Test the installation
 
-`go test ./lib/tests -v`
+`go test ./tests/ -v`
 
 
 ## Usage
