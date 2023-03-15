@@ -2,32 +2,12 @@ package util
 
 import (
 	"flag"
-	"fmt"
 	"io"
 	"log"
-	"math/rand"
 	"os"
 	"strings"
-	"time"
 )
 
-func Usage() {
-	// Print message to stdout
-	fmt.Println(UsageString())
-	// Terminate program processing
-	os.Exit(0)
-}
-
-// UsageString Method to print out correct usage method and exit the prgram
-func UsageString() string {
-	return ("\nUsage: go run main.go COMMAND\n\nA program to build a kubernetes " +
-		"cluster using kind, and then apply a security admission webhook\n\nCommands:\n" +
-		"\t-c [config_file_path] \tCreate cluster from a config file\n" +
-		"\t-cluster\t\tCreate a kind cluster\n\t-info\t\t\tGet cluster information\n" +
-		"\t-interface\t\tOpen Kubernetes web interface\n\t-deploy\t\t\tDeploy admissions " +
-		"controller webhook\n\t-shutdown [name]\tShutdown a kubernetes cluster\n\n" +
-		"For more information, please visit https://github.com/usfca-cs490-sp23/admissions-webhook")
-}
 
 // NotYetImplemented Helper method to panic and trace to source method for unimplemented code
 func NotYetImplemented(method string) {
@@ -45,21 +25,10 @@ func IsFlagRaised(flag_name string) bool {
 	return found
 }
 
-// RandomString Helper method to generate a random string
-func RandomString(length int) string {
-	// Generate seed
-	rand.Seed(time.Now().UnixNano())
-	// Make a byte array with length + 2
-	byteArr := make([]byte, length+2)
-	// Write random bytes into the byte array
-	rand.Read(byteArr)
-	// Return the random string
-	return fmt.Sprintf("%x", byteArr)[2 : length+2]
-}
-
 // FatalErrorCheck Helper method to crash if errors exist
 func FatalErrorCheck(err error) {
 	if err != nil {
+        log.Print(err)
 		log.Fatal(err)
 	}
 }
@@ -71,8 +40,8 @@ func NonfatalErrorCheck(err error) {
 	}
 }
 
-// readFile Helper method to read a file and return it as a string
-func readFile(infile string) string {
+// ReadFile Helper method to read a file and return it as a string
+func ReadFile(infile string) string {
 	// Open the current file and generate reader
 	f, err := os.Open(infile)
 	FatalErrorCheck(err)
@@ -86,8 +55,8 @@ func readFile(infile string) string {
 	return string(content)
 }
 
-// writeFile Helper method to write a file
-func writeFile(outfile, data string) {
+// WriteFile Helper method to write a file
+func WriteFile(outfile, data string) {
 	// Create the file
 	f, err := os.Create(outfile)
 	// Crash if error
@@ -102,9 +71,9 @@ func writeFile(outfile, data string) {
 // InjectYamlCA Method to inject a CA bundle into a YAML file
 func InjectYamlCA(target, template, injectable string) {
 	// Read and store file with tls data
-	content := readFile(injectable)
+	content := ReadFile(injectable)
 	// Read and store file to inject tls into
-	config := readFile(template)
+	config := ReadFile(template)
 
 	// Remove unnecessary prefix from content
 	content = strings.TrimPrefix(content, ">> MutatingWebhookConfiguration caBundle:")
@@ -112,8 +81,9 @@ func InjectYamlCA(target, template, injectable string) {
 	content = strings.ReplaceAll(content, "\n", "\n                ")
 
 	// Insert the content into the config file string
-	config = strings.Replace(config, "caBundle: |", "caBundle: |\n                "+content, 1)
+	config = strings.Replace(config, "caBundle: |", "caBundle: |\n                " + content, 1)
 
 	// Now write to file
-	writeFile(target, config)
+	WriteFile(target, config)
 }
+
