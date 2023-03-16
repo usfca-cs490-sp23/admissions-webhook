@@ -2,6 +2,7 @@ package dashboard
 
 import (
     "os/exec"
+	"os"
 
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
@@ -20,7 +21,9 @@ func DashInit() {
 	err := cmd.Run()
 	util.FatalErrorCheck(err)
 
-	DashUser()
+	print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
+
+	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
 
 	proxy := exec.Command("kubectl", "proxy")
 	// Run and handle errors
@@ -30,18 +33,25 @@ func DashInit() {
 }
 
 //DashUser creates a new user account via K8's Service Account mechanism
-func DashUser(/*manFile string*/){
-	//this does not work
-	//cmd := exec.Command("kubectl", "apply", "-f", manFile)
-	defCmd := exec.Command("kubectl", "create", "serviceaccount", "dashboard", "-n", "default")
-	defErr := defCmd.Run()
-	util.FatalErrorCheck(defErr)
+func DashUser(adminUser string, adminRb string){
+	//create admin service account (see dashboard-adminuser.yaml)
+	cmd := exec.Command("kubectl", "apply", "-f", adminUser)
+	err := cmd.Run()
+	util.FatalErrorCheck(err)
 
-	//pathCmd := exec.Command("$(kubectl", "get", "serviceaccount", "dashboard", "-o", "jsonpath=\"{secrets[0].name}\")")
-	tknCmd := exec.Command("kubectl", "get", "secret", 
-	"$(kubectl", "get", "serviceaccount", "dashboard", "-o", "jsonpath=\"{secrets[0].name}\")", "-o", "jsonpath=\"{.data.token}\"", "|", "base64", "--decode")
+	//create cluster role binding (see admin-rb.yaml)
+	rbCmd := exec.Command("kubectl", "apply", "-f", adminRb)
+	rbErr := rbCmd.Run()
+	util.FatalErrorCheck(rbErr)
 
-	tknErr := tknCmd.Run()
+	//name of the service account
+	saName := "admin-user"
+
+	tkn := exec.Command("kubectl", "-n", "kubernetes-dashboard", "create", "token", saName)
+	print("and enter token: ")
+	tkn.Stdout = os.Stdout
+	tkn.Stderr = os.Stderr
+	tknErr := tkn.Run()
 	util.FatalErrorCheck(tknErr)
 
 }
