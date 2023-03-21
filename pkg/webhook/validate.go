@@ -2,11 +2,23 @@ package webhook
 
 import (
 	"fmt"
+    "os/exec"
     "github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
+    "github.com/usfca-cs490/admissions-webhook/pkg/util"
 
 	corev1 "k8s.io/api/core/v1"
 )
 
+// GenerateSBOM generates an SBOM from an image and stores it in an argued path
+func GenerateSBOM(outfile, image string) {
+	// Create and run command
+    out, err := exec.Command("syft","-o", "json", image).Output()
+    // Crash if there are any errors
+    util.FatalErrorCheck(err)
+
+    // Write output to file
+    util.WriteFile(outfile, string(out))
+}
 
 // TODO: add all functionality
 // checkPodImages pulls out all images from a pod struct and sends them to the DB interface,
@@ -38,3 +50,4 @@ func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	// currently allows any pod into cluster
 	return dashboard.DashboardUpdate{Denied: false}, nil
 }
+
