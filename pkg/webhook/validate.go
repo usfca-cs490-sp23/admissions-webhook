@@ -32,7 +32,7 @@ func GenerateSBOM(outfile, image string) {
 	// Create and run command
 	out, err := exec.Command("syft", "-o", "json", image).Output()
 	// Crash if there are any errors
-	util.FatalErrorCheck(err)
+	util.NonfatalErrorCheck(err)
 
 	// Write output to file
 	util.WriteFile(outfile, string(out))
@@ -52,7 +52,7 @@ func runGrypeOnSingleImage(sbomFile string) bool {
 	// To scan an SBOM: grype sbom:./example.json
 	out, err := exec.Command("grype", givenSBOM, "-o", "json").Output()
 	// Crash if there are any errors
-	util.FatalErrorCheck(err)
+	util.NonfatalErrorCheck(err)
 
 	// Write output to file
 	util.WriteFile(outFile, string(out))
@@ -91,6 +91,7 @@ func formatTime() string {
 func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	// TODO: pod.Spec.ImagePullSecrets // should allow to get all images from a pod? (maybe just secret ones?)
 	// get the list of all given containers in this pod
+
 	containers := pod.Spec.Containers
 	// get the number of images
 	sliceSize := len(containers)

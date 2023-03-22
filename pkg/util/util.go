@@ -8,7 +8,6 @@ import (
 	"strings"
 )
 
-
 // NotYetImplemented Helper method to panic and trace to source method for unimplemented code
 func NotYetImplemented(method string) {
 	panic((method + " not yet implemented"))
@@ -28,7 +27,8 @@ func IsFlagRaised(flag_name string) bool {
 // FatalErrorCheck Helper method to crash if errors exist
 func FatalErrorCheck(err error) {
 	if err != nil {
-        log.Print(err)
+		log.Print(err)
+		log.Print("\nERROR: " + err.Error() + "\n")
 		log.Fatal(err)
 	}
 }
@@ -37,6 +37,7 @@ func FatalErrorCheck(err error) {
 func NonfatalErrorCheck(err error) {
 	if err != nil {
 		log.Print(err)
+		log.Print("\nERROR Nonfatal: " + err.Error() + "\n")
 	}
 }
 
@@ -81,9 +82,8 @@ func InjectYamlCA(target, template, injectable string) {
 	content = strings.ReplaceAll(content, "\n", "\n                ")
 
 	// Insert the content into the config file string
-	config = strings.Replace(config, "caBundle: |", "caBundle: |\n                " + content, 1)
+	config = strings.Replace(config, "caBundle: |", "caBundle: |\n                "+content, 1)
 
 	// Now write to file
 	WriteFile(target, config)
 }
-
