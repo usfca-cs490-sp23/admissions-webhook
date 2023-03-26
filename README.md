@@ -51,10 +51,20 @@ A full list of functionalities can be seen by running `go run main.go -h`
 │   │   ├── validating.config.template.yaml
 │   │   └── validating.config.yaml
 │   ├── dashboard
+│   │   ├── admin-rb.yaml
+│   │   ├── dashboard-adminuser.yaml
 │   │   └── dashboard.go
+│   ├── evals
 │   ├── kind
 │   │   ├── cluster_utils.go
-│   │   └── kind.cluster.yaml
+│   │   ├── kind.cluster.yaml
+│   │   ├── services
+│   │   │   └── load-balancer.yaml
+│   │   └── test-pods
+│   │       ├── alpine-good.yaml
+│   │       ├── hello-good.yaml
+│   │       └── nginx-fail.yaml
+│   ├── sboms
 │   ├── tls
 │   │   └── gen_certs.sh
 │   ├── util
@@ -69,4 +79,5 @@ A full list of functionalities can be seen by running `go run main.go -h`
 ├── README.md
 └── tests
     └── startup_test.go
+
 ```
