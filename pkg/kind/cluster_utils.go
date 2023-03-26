@@ -151,3 +151,16 @@ func DescribeHook(hook_name string) {
 	util.NonfatalErrorCheck(err, true)
 }
 
+// AddPod Method to add a pod
+func AddPod(pod_config_path string) {
+	// Create command
+	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+

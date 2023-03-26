@@ -24,6 +24,8 @@ func main () {
     flag.Bool("reconfigure", false, "reconfigure the cluster")
     // Display logs
     flag.Bool("logstream", false, "stream webhook logs to terminal")
+    // Add a pod
+    pod_config_path := flag.String("add", "./pkg/kind/test-pods/hello-good.yaml", "attempt to add a pod to the cluster")
 	// Shutdown flag
     flag.Bool("status", false, "print out description of webhook pod")
     // Build hook flag, should only be called by Docker container
@@ -70,6 +72,11 @@ func main () {
     if util.IsFlagRaised("logstream") {
         // Stream the logs
         kind.StreamLogs("the-captains-hook")
+    }
+
+    // Add a pod
+    if util.IsFlagRaised("add") {
+        kind.AddPod(*pod_config_path)
     }
 
     // Build the webhook
