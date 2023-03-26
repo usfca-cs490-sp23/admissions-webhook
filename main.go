@@ -20,6 +20,10 @@ func main () {
 	flag.Bool("deploy", false, "apply admissions webhook to cluster")
     // Print webhook pod status flag
     flag.Bool("hook", false, "start webhook, should only be called by Docker container")
+	// Reconfigure cluster flag
+    flag.Bool("reconfigure", false, "reconfigure the cluster")
+    // Display logs
+    flag.Bool("logstream", false, "stream webhook logs to terminal")
 	// Shutdown flag
     flag.Bool("status", false, "print out description of webhook pod")
     // Build hook flag, should only be called by Docker container
@@ -55,6 +59,19 @@ func main () {
         kind.ApplyConfig("./pkg/webhook/deploy-rules")
     }
     
+    // Reconfigure the cluster
+    if util.IsFlagRaised("reconfigure") {
+        // Apply configs
+        kind.ApplyConfig("./pkg/cluster-config")
+        kind.ApplyConfig("./pkg/webhook/deploy-rules")
+    }
+
+    // Stream cluster logs to terminal
+    if util.IsFlagRaised("logstream") {
+        // Stream the logs
+        kind.StreamLogs("the-captains-hook")
+    }
+
     // Build the webhook
     if util.IsFlagRaised("hook") {
         webhook.Build()

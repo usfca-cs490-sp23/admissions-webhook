@@ -6,7 +6,38 @@ import (
 	"log"
 	"os"
 	"os/exec"
+    "strings"
 )
+
+// GetPodName get an argued pod's name
+func GetPodName(pod_name string) string {
+    // Call kubectl describe on the argued pod name
+    hook_desc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
+    // Crash if there is an error
+    util.FatalErrorCheck(err, true)
+
+    // Extract just the name from the description
+    hook_desc_str := string(hook_desc)
+    hook_desc_str = hook_desc_str[0:strings.Index(hook_desc_str, "\n")]
+    hook_desc_str = strings.Trim(strings.TrimPrefix(hook_desc_str, "Name:"), " ")
+
+    // Return the name
+    return hook_desc_str
+}
+
+// StreamLogs send the logs to stdout
+func StreamLogs(pod_name string) {
+    // Create a logging command with kubectl
+    cmd := exec.Command("kubectl", "logs", "-l", string("app=" + pod_name), "-f")
+
+    // Redirect output to terminal
+    cmd.Stdout = os.Stdout
+    cmd.Stderr = os.Stderr
+
+    // Run the command and handle errors
+    err := cmd.Run()
+    util.FatalErrorCheck(err, true)
+}
 
 // CreateCluster Method to create a cluster using kind
 func CreateCluster() {
@@ -18,7 +49,7 @@ func CreateCluster() {
 
 	// Run and handle errors
 	err := cmd.Run()
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, false)
 }
 
 // Shutdown Method to shutdown a cluster
@@ -30,9 +61,8 @@ func Shutdown() {
 	cmd.Stderr = os.Stderr
 
 	// Run and handle errors
-	if err := cmd.Run(); err != nil {
-		log.Fatal("startup.go: FAILED TO GET CLUSTER INFO")
-	}
+    err := cmd.Run()
+    util.FatalErrorCheck(err, true)
 }
 
 // Info Method to check kind cluster info
@@ -62,7 +92,7 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// Run and handle errors
 	err := cmd.Run()
 	// Crash if error
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, true)
 
 	// Status print
 	fmt.Println("Loading Docker image", (image_name + ":" + version))
@@ -73,7 +103,7 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// Run and handle errors
 	err = cmd.Run()
 	// Crash if error
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, true)
 }
 
 // GenCerts Method to generate TLS certifications and cluster configs
@@ -87,7 +117,7 @@ func GenCerts() {
     // Run and handle errors
     err := cmd.Run()
     // Crash if error
-    util.FatalErrorCheck(err)
+    util.FatalErrorCheck(err, true)
 
     // Inject CA Bundle into validating.config.yaml
     util.InjectYamlCA("./pkg/cluster-config/validating.config.yaml",
@@ -105,7 +135,7 @@ func ApplyConfig(config_file string) {
 	// Run and handle errors
 	err := cmd.Run()
 	// Crash if error
-	util.NonfatalErrorCheck(err)
+	util.NonfatalErrorCheck(err, true)
 }
 
 // DescribeHook Method to get hook pod data
@@ -118,5 +148,6 @@ func DescribeHook(hook_name string) {
 	// Run and handle errors
 	err := cmd.Run()
 	// Crash if error
-	util.NonfatalErrorCheck(err)
+	util.NonfatalErrorCheck(err, true)
 }
+
