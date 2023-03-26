@@ -1,8 +1,8 @@
 package dashboard
 
 import (
-    "os/exec"
 	"os"
+	"os/exec"
 
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
@@ -16,7 +16,7 @@ type DashboardUpdate struct {
 
 // DashInit initiates the dashboard on user's local computer
 func DashInit() {
-	cmd := exec.Command("kubectl","apply", "-f", "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml")
+	cmd := exec.Command("kubectl", "apply", "-f", "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml")
 	// Run and handle errors
 	err := cmd.Run()
 	util.FatalErrorCheck(err)
@@ -25,24 +25,24 @@ func DashInit() {
 
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
 
-	proxy := exec.Command("kubectl", "proxy")
+	cmd = exec.Command("kubectl", "proxy")
 	// Run and handle errors
-	proxyErr := proxy.Run()
-	util.FatalErrorCheck(proxyErr)
+	err = cmd.Run()
+	util.FatalErrorCheck(err)
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
 
-//DashUser creates a new user account via K8's Service Account mechanism
-func DashUser(adminUser string, adminRb string){
+// DashUser creates a new user account via K8's Service Account mechanism
+func DashUser(adminUser string, adminRb string) {
 	//create admin service account (see dashboard-adminuser.yaml)
 	cmd := exec.Command("kubectl", "apply", "-f", adminUser)
 	err := cmd.Run()
 	util.FatalErrorCheck(err)
 
 	//create cluster role binding (see admin-rb.yaml)
-	rbCmd := exec.Command("kubectl", "apply", "-f", adminRb)
-	rbErr := rbCmd.Run()
-	util.FatalErrorCheck(rbErr)
+	cmd = exec.Command("kubectl", "apply", "-f", adminRb)
+	err = cmd.Run()
+	util.FatalErrorCheck(err)
 
 	//name of the service account
 	saName := "admin-user"
@@ -51,8 +51,8 @@ func DashUser(adminUser string, adminRb string){
 	print("and enter token: ")
 	tkn.Stdout = os.Stdout
 	tkn.Stderr = os.Stderr
-	tknErr := tkn.Run()
-	util.FatalErrorCheck(tknErr)
+	err = tkn.Run()
+	util.FatalErrorCheck(err)
 
 }
 
