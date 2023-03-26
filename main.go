@@ -5,6 +5,7 @@ import (
 	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
+    "github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 )
 
 /* Startup method */
@@ -38,8 +39,9 @@ func main () {
 	}
 
     // Launch kind cluster interface
-    if util.IsFlagRaised("interface") {
-		util.NotYetImplemented("dashboard")
+    if util.IsFlagRaised("dashboard") {
+		//util.NotYetImplemented("dashboard")
+        dashboard.DashInit()
 	}
     
     // Apply webhook to cluster
