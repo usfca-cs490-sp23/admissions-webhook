@@ -36,7 +36,7 @@ func FatalErrorCheck(err error) {
 // NonfatalErrorCheck Helper method to output present errors but not crash
 func NonfatalErrorCheck(err error) {
 	if err != nil {
-		log.Print(err)
+		//log.Print(err)
 		log.Print("\nERROR Nonfatal: " + err.Error() + "\n")
 	}
 }

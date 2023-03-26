@@ -12,8 +12,6 @@ COPY . /work
 # add the syft and grype dependencies
 #RUN apt-get -y update; apt-get -y install curl
 #RUN curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b .
-#RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
-
 
 
 # Build admission-webhook
@@ -23,11 +21,15 @@ RUN --mount=type=cache,target=/root/.cache/go-build,sharing=private \
 
 
 # ---
-FROM scratch AS run
+FROM alpine AS run
 
 COPY --from=build /work/bin/admission-webhook /usr/local/bin/
 COPY cli_tools/syft /usr/local/bin
+RUN apk --no-cache add curl
+RUN curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
 ENV PATH="${PATH}:/usr/local/bin"
 
+COPY pkg /usr/webhook
+WORKDIR /usr/webhook
 
 CMD ["admission-webhook","-hook"]
