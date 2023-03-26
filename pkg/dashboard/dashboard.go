@@ -19,7 +19,7 @@ func DashInit() {
 	cmd := exec.Command("kubectl", "apply", "-f", "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml")
 	// Run and handle errors
 	err := cmd.Run()
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, false)
 
 	print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
 
@@ -28,7 +28,7 @@ func DashInit() {
 	cmd = exec.Command("kubectl", "proxy")
 	// Run and handle errors
 	err = cmd.Run()
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, false)
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
 
@@ -37,12 +37,12 @@ func DashUser(adminUser string, adminRb string) {
 	//create admin service account (see dashboard-adminuser.yaml)
 	cmd := exec.Command("kubectl", "apply", "-f", adminUser)
 	err := cmd.Run()
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, false)
 
 	//create cluster role binding (see admin-rb.yaml)
 	cmd = exec.Command("kubectl", "apply", "-f", adminRb)
 	err = cmd.Run()
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, false)
 
 	//name of the service account
 	saName := "admin-user"
@@ -52,7 +52,7 @@ func DashUser(adminUser string, adminRb string) {
 	tkn.Stdout = os.Stdout
 	tkn.Stderr = os.Stderr
 	err = tkn.Run()
-	util.FatalErrorCheck(err)
+	util.FatalErrorCheck(err, false)
 
 }
 
