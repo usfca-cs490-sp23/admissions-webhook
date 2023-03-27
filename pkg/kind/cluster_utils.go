@@ -39,6 +39,18 @@ func StreamLogs(pod_name string) {
     util.FatalErrorCheck(err, true)
 }
 
+func GetPods(node_name string) string {
+    // Create a logging command with kubectl
+    out, err := exec.Command("kubectl", "get", "pods", "--all-namespaces", "-o", "wide", 
+        "--field-selector", string("spec.nodeName=" + node_name)).Output()
+
+
+    // Run the command and handle errors
+    util.NonfatalErrorCheck(err, true)
+
+    return string(out)
+}
+
 // CreateCluster Method to create a cluster using kind
 func CreateCluster() {
 	// Create command

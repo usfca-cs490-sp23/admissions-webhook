@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+    "fmt"
 	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
@@ -24,6 +25,8 @@ func main () {
     flag.Bool("reconfigure", false, "reconfigure the cluster")
     // Display logs
     flag.Bool("logstream", false, "stream webhook logs to terminal")
+    // Show all pods in kind-control-plane node
+    flag.Bool("pods", false, "show all pods in the kind-control-plane node")
     // Add a pod
     pod_config_path := flag.String("add", "./pkg/kind/test-pods/hello-good.yaml", "attempt to add a pod to the cluster")
 	// Shutdown flag
@@ -72,6 +75,11 @@ func main () {
     if util.IsFlagRaised("logstream") {
         // Stream the logs
         kind.StreamLogs("the-captains-hook")
+    }
+
+    // Show all pods in kind-control-plane node
+    if util.IsFlagRaised("pods") {
+        fmt.Println(kind.GetPods("kind-control-plane"))
     }
 
     // Add a pod
