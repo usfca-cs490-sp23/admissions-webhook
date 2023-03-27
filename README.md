@@ -7,7 +7,7 @@ CS 490 Senior Team Project
 
 2. (Optional) Test the installation
 
-`go test ./tests/ -v`
+`go test ./tests/install/ -v`
 
 
 ## Usage
@@ -31,6 +31,10 @@ Shutting down the cluster can be done with another wrapper method:
 To add a pod is a simple wrapper on the standard applying functionality:
 
 `go run main.go -add <path-to-.yaml-file>`
+
+The wehbook can be tested with three test pods stored in `pkg/kind/test-pods/` by running:
+
+`go test ./tests/webhook/ -v`
 
 Starting up the K8's dashboard is done with: `go run main.go -dashboard` and then
 following the steps given once it is started
