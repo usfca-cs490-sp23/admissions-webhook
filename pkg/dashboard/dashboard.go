@@ -3,6 +3,7 @@ package dashboard
 import (
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
@@ -21,9 +22,9 @@ func DashInit() {
 	err := cmd.Run()
 	util.FatalErrorCheck(err, false)
 
-	print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
-
+	//print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
+	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
 
 	cmd = exec.Command("kubectl", "proxy")
 	// Run and handle errors
@@ -54,6 +55,22 @@ func DashUser(adminUser string, adminRb string) {
 	err = tkn.Run()
 	util.FatalErrorCheck(err, false)
 
+}
+
+func OpenLink(link string) {
+	var cmd string
+	os := runtime.GOOS
+
+	if os == "windows" {
+		cmd = "cmd /c start"
+	} else if os == "darwin" {
+		cmd = "open"
+	} else {
+		cmd = "xdg-open"
+	}
+	site := exec.Command(cmd, link)
+	err := site.Run()
+	util.FatalErrorCheck(err, false)
 }
 
 // BadPodDashUpdate TODO: expand this to have field values expressing that the pod could not be examined
