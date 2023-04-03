@@ -64,7 +64,7 @@ func compareSeverity(givenSeverity string, limit int) bool {
 // constructPolicy reads in the admission_policy.json file and parses it into usable data via the Policy struct
 func constructPolicy() (int, map[string]int) {
 	// read the file back in as a string
-	rawContent := util.ReadFile("admission_policy.json")
+	rawContent := util.ReadFile("webhook/admission_policy.json")
 
 	// read the admission policy into the custom struct
 	var policyInfo Policy
