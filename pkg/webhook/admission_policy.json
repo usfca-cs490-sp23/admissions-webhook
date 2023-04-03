@@ -1,0 +1,7 @@
+{
+  "severity_limit": "High",
+  "id_whitelist": [
+    "CVE-2005-2541",
+    "CVE-2007-5686"
+  ]
+}

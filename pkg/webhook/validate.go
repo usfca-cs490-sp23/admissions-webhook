@@ -26,10 +26,67 @@ type Vulns struct {
 	Severity   string `json:"severity"`
 }
 
-// generateSBOM generates an SBOM from an image and stores it in an argued path (currently: ./pkg/sboms/<filename>)
+// Policy is a special struct to read the admission_policy file that sets the rules for the webhook
+type Policy struct {
+	SeverityLimit string   `json:"severity_limit"`
+	Whitelist     []string `json:"id_whitelist"`
+}
+
+// convertSeverityString takes a string form of a severity for admission policy and converts it to the comparable integer form
+func convertSeverityString(severity string) int {
+	sevVal := 0
+	if severity == "Negligible" {
+		sevVal = 0
+	} else if severity == "Low" {
+		sevVal = 1
+	} else if severity == "Medium" {
+		sevVal = 2
+	} else if severity == "High" {
+		sevVal = 3
+	} else {
+		// if it is "Critical" or "Unknown" then assume the worst
+		sevVal = 4
+	}
+	return sevVal
+}
+
+// compareSeverity takes the given CVE severity and checks if it falls within the given limit as dictated by the
+// admission policy, and if the CVE is within the limit, return true
+func compareSeverity(givenSeverity string, limit int) bool {
+	givenInt := convertSeverityString(givenSeverity)
+
+	if givenInt >= limit {
+		return false
+	}
+	return true
+}
+
+// constructPolicy reads in the admission_policy.json file and parses it into usable data via the Policy struct
+func constructPolicy() (int, map[string]int) {
+	// read the file back in as a string
+	rawContent := util.ReadFile("admission_policy.json")
+
+	// read the admission policy into the custom struct
+	var policyInfo Policy
+	_ = json.Unmarshal([]byte(rawContent), &policyInfo)
+
+	// get the severity limit and convert to int for easier comparisons
+	rawSeverity := policyInfo.SeverityLimit
+	severityLimit := convertSeverityString(rawSeverity)
+	// make a map to speed up search time later
+	whiteListMap := make(map[string]int)
+	for _, id := range policyInfo.Whitelist {
+		whiteListMap[id] = 1
+	}
+
+	// return the two pieces of info needed to enforce the policy
+	return severityLimit, whiteListMap
+}
+
+// generateSBOM generates an SBOM from an image and stores it in an argued path
 func generateSBOM(outfile, image string) {
 	// Create and run command
-    log.Print("validate.go: GenerateSBOM -> creating SBOM for " + image + "...")
+	log.Print("validate.go: GenerateSBOM -> creating SBOM for " + image + "...")
 	out, err := exec.Command("syft", "-o", "json", image).Output()
 	// Crash if there are any errors
 	util.FatalErrorCheck(err, true)
@@ -43,7 +100,7 @@ func generateSBOM(outfile, image string) {
 // writes the grype evaluation results to a json file, reads the evaluation into the special struct,
 // checks if that image breaks the security rules (has "Critical" rated CVEs),
 // and returns false if the rules are not broken
-func evaluateImage(sbomFile string, imageName string) bool {
+func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteListMap map[string]int) []string {
 	timeName := util.FormatTime()
 	//EX: evals/nginx_eval_2023-3-20_17-57-50.json
 	outFile := "evals/" + imageName + "_eval_" + timeName + ".json"
@@ -51,11 +108,11 @@ func evaluateImage(sbomFile string, imageName string) bool {
 	// run grype command
 	givenSBOM := "sbom:./" + sbomFile
 	// To scan an SBOM: grype sbom:./example.json
-    log.Print("validate.go: evaluateImage -> running grype on SBOM at " + givenSBOM)
+	log.Print("validate.go: evaluateImage -> running grype on SBOM at " + givenSBOM)
 	out, err := exec.Command("grype", givenSBOM, "-o", "json").Output()
 	// Crash if there are any errors
 	util.FatalErrorCheck(err, true)
-    log.Print("validate.go: evaluateImage -> grype ran successfully and stored output in " + outFile)
+	log.Print("validate.go: evaluateImage -> grype ran successfully and stored output in " + outFile)
 
 	// Write output to file
 	util.WriteFile(outFile, string(out))
@@ -67,16 +124,27 @@ func evaluateImage(sbomFile string, imageName string) bool {
 	var result Evaluation
 	_ = json.Unmarshal([]byte(rawContent), &result)
 
+	// list to store each CVE that breaks policy from this image
+	var cveList []string
+
 	// result is now a list of matches that can be iterated through
 	for i := 0; i < len(result.Matches); i++ {
-		// This rule can be changed easily in the future via yaml/json rules that can be read in from config
-		if result.Matches[i].Vulnerability.Severity == "Critical" {
-			return true
+		// get the current CVE id and severity level
+		currID := result.Matches[i].Vulnerability.ID
+		currSeverity := result.Matches[i].Vulnerability.Severity
+		// if not within the limit, check the whitelist
+		if !compareSeverity(currSeverity, severityLimit) {
+			// don't care about the value, just whether or not the id exists in the white-list (present is a bool)
+			_, present := whiteListMap[currID]
+			// if not in the whitelist
+			if !present {
+				// add to the list of CVEs that break policy
+				cveList = append(cveList, currID)
+			}
 		}
 	}
-	return false
+	return cveList
 }
-
 
 // TODO: add all functionality
 // checkPodImages pulls out all images from a pod struct and sends them to the DB interface,
@@ -93,10 +161,15 @@ func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	// setup an empty slice to hold each image
 	imageSlice := make([]string, sliceSize)
 
+	// get the security policy here (any amount of repeated calculations someone would argue, I argue this adds per pod flexibility, and NO I don't care who says to change it
+	severityLimit, whiteListMap := constructPolicy()
+
 	// TODO: this is a shit way of doing this, but I just want to see it work right now, clean this up later
 	counter := 0
 	// extract all images and store in the list
 	failure := false
+	// make a map[string][]string to store image name as key, and it's cveList as value
+	imageCVEMap := make(map[string][]string)
 	for range containers {
 		imageSlice[counter] = containers[counter].Image
 
@@ -105,27 +178,28 @@ func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 		// EX: sboms/nginx_sbom_2023-3-20_17-57-50.json
 		sbomName := "sboms/" + containers[counter].Image + "_sbom_" + timeRaw + ".json"
 		generateSBOM(sbomName, containers[counter].Image)
-		// we could immediately stop and break here, but I think it's worth checking all the images in the pod
-		// TODO: change this so that it makes a list of the images that failed and try to come up with a way that can say what CVEs caused the failure? idk
-		grypeRes := evaluateImage(sbomName, containers[counter].Image)
-        log.Print("validate.go: checkPodImages -> successfully evaluated vulnerabilities")
-		if grypeRes == true {
+
+		grypeRes := evaluateImage(sbomName, containers[counter].Image, severityLimit, whiteListMap)
+		log.Print("validate.go: checkPodImages -> successfully evaluated vulnerabilities")
+
+		// if any CVE's broke policy then add this image to the map of bad images
+		if len(grypeRes) > 0 {
+			imageCVEMap[containers[counter].Image] = grypeRes
 			failure = true
 		}
 
 		counter++
 	}
 
-	singleImage := pod.Spec.Containers[0].Image
-
-	// TODO: pass each image to the DB interface from here and receive the grype results
+	// TODO: make sure this is right, bc I changes it to pod name instead of first image in the pod
+	podName := pod.ObjectMeta.Name
 
 	// currently rejects any pod with an image containing a Critical level CVE
 	if failure {
-        log.Print("validate.go: checkPodImages -> " + singleImage + " was denied")
-		return dashboard.DashboardUpdate{Denied: true}, nil
+		log.Print("validate.go: checkPodImages -> " + podName + " was denied")
+		return dashboard.DashboardUpdate{Denied: true, CVEList: imageCVEMap}, nil
 	}
 
-    log.Print("validate.go: checkPodImages -> " + singleImage + " was accepted")
-	return dashboard.DashboardUpdate{Denied: false}, nil
+	log.Print("validate.go: checkPodImages -> " + podName + " was accepted")
+	return dashboard.DashboardUpdate{Denied: false, CVEList: imageCVEMap}, nil
 }
