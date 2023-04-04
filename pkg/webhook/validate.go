@@ -43,9 +43,12 @@ func convertSeverityString(severity string) int {
 		sevVal = 2
 	} else if severity == "High" {
 		sevVal = 3
-	} else {
-		// if it is "Critical" or "Unknown" then assume the worst
+	} else if severity == "Critical" {
 		sevVal = 4
+	} else {
+		// if it is "Unknown" then assume the worst,
+		// or "Setup" is for pre-approved pods as part of the cluster starting
+		sevVal = 5
 	}
 	return sevVal
 }
@@ -61,10 +64,10 @@ func compareSeverity(givenSeverity string, limit int) bool {
 	return true
 }
 
-// constructPolicy reads in the admission_policy.json file and parses it into usable data via the Policy struct
-func constructPolicy() (int, map[string]int) {
+// ConstructPolicy reads in the admission_policy.json file and parses it into usable data via the Policy struct
+func ConstructPolicy(policyFile string) (int, map[string]int) {
 	// read the file back in as a string
-	rawContent := util.ReadFile("webhook/admission_policy.json")
+	rawContent := util.ReadFile(policyFile)
 
 	// read the admission policy into the custom struct
 	var policyInfo Policy
@@ -146,15 +149,11 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 	return cveList
 }
 
-// TODO: add all functionality
 // checkPodImages pulls out all images from a pod struct and sends them to the DB interface,
 // which then checks if an SBOM exists for each (if not, then sends the image to syft) and then,
 // based off the result of grype (which should return to this function) and says what CVEs
 // exist within each image, and if any of those CVEs are unacceptable, the whole pod is Denied
 func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
-	// TODO: pod.Spec.ImagePullSecrets // should allow to get all images from a pod? (maybe just secret ones?)
-	// get the list of all given containers in this pod
-
 	containers := pod.Spec.Containers
 	// get the number of images
 	sliceSize := len(containers)
@@ -162,9 +161,8 @@ func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	imageSlice := make([]string, sliceSize)
 
 	// get the security policy here (any amount of repeated calculations someone would argue, I argue this adds per pod flexibility, and NO I don't care who says to change it
-	severityLimit, whiteListMap := constructPolicy()
+	severityLimit, whiteListMap := ConstructPolicy("webhook/admission_policy.json")
 
-	// TODO: this is a shit way of doing this, but I just want to see it work right now, clean this up later
 	counter := 0
 	// extract all images and store in the list
 	failure := false
@@ -173,7 +171,7 @@ func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	for range containers {
 		imageSlice[counter] = containers[counter].Image
 
-		// TODO: don't do any this here, this is just the proof of concept
+		// get the time to make the file names unique
 		timeRaw := util.FormatTime()
 		// EX: sboms/nginx_sbom_2023-3-20_17-57-50.json
 		sbomName := "sboms/" + containers[counter].Image + "_sbom_" + timeRaw + ".json"
@@ -191,7 +189,7 @@ func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 		counter++
 	}
 
-	// TODO: make sure this is right, bc I changes it to pod name instead of first image in the pod
+	// get the pod name for the print-out
 	podName := pod.ObjectMeta.Name
 
 	// currently rejects any pod with an image containing a Critical level CVE

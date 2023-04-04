@@ -6,49 +6,48 @@ import (
 	"log"
 	"os"
 	"os/exec"
-    "strings"
+	"strings"
 )
 
 // GetPodName get an argued pod's name
 func GetPodName(pod_name string) string {
-    // Call kubectl describe on the argued pod name
-    hook_desc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
-    // Crash if there is an error
-    util.FatalErrorCheck(err, true)
+	// Call kubectl describe on the argued pod name
+	hook_desc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
+	// Crash if there is an error
+	util.FatalErrorCheck(err, true)
 
-    // Extract just the name from the description
-    hook_desc_str := string(hook_desc)
-    hook_desc_str = hook_desc_str[0:strings.Index(hook_desc_str, "\n")]
-    hook_desc_str = strings.Trim(strings.TrimPrefix(hook_desc_str, "Name:"), " ")
+	// Extract just the name from the description
+	hook_desc_str := string(hook_desc)
+	hook_desc_str = hook_desc_str[0:strings.Index(hook_desc_str, "\n")]
+	hook_desc_str = strings.Trim(strings.TrimPrefix(hook_desc_str, "Name:"), " ")
 
-    // Return the name
-    return hook_desc_str
+	// Return the name
+	return hook_desc_str
 }
 
 // StreamLogs send the logs to stdout
 func StreamLogs(pod_name string) {
-    // Create a logging command with kubectl
-    cmd := exec.Command("kubectl", "logs", "-l", string("app=" + pod_name), "-f")
+	// Create a logging command with kubectl
+	cmd := exec.Command("kubectl", "logs", "-l", string("app="+pod_name), "-f")
 
-    // Redirect output to terminal
-    cmd.Stdout = os.Stdout
-    cmd.Stderr = os.Stderr
+	// Redirect output to terminal
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
-    // Run the command and handle errors
-    err := cmd.Run()
-    util.FatalErrorCheck(err, true)
+	// Run the command and handle errors
+	err := cmd.Run()
+	util.FatalErrorCheck(err, true)
 }
 
 func GetPods(node_name string) string {
-    // Create a logging command with kubectl
-    out, err := exec.Command("kubectl", "get", "pods", "--all-namespaces", "-o", "wide", 
-        "--field-selector", string("spec.nodeName=" + node_name)).Output()
+	// Create a logging command with kubectl
+	out, err := exec.Command("kubectl", "get", "pods", "--all-namespaces", "-o", "wide",
+		"--field-selector", string("spec.nodeName="+node_name)).Output()
 
+	// Run the command and handle errors
+	util.NonfatalErrorCheck(err, true)
 
-    // Run the command and handle errors
-    util.NonfatalErrorCheck(err, true)
-
-    return string(out)
+	return string(out)
 }
 
 // CreateCluster Method to create a cluster using kind
@@ -73,8 +72,8 @@ func Shutdown() {
 	cmd.Stderr = os.Stderr
 
 	// Run and handle errors
-    err := cmd.Run()
-    util.FatalErrorCheck(err, true)
+	err := cmd.Run()
+	util.FatalErrorCheck(err, true)
 }
 
 // Info Method to check kind cluster info
@@ -116,24 +115,40 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	err = cmd.Run()
 	// Crash if error
 	util.FatalErrorCheck(err, true)
+
+	// using hidden policy file trickery to let the redis pod in at startup
+	// read in each file and store the data
+	userContents := util.ReadFile("webhook/admission_policy.json")
+	defaultContents := util.ReadFile("webhook/.default_policy.json")
+
+	// write the default data to the user file to allow redis into the cluster
+	util.WriteFile("webhook/admission_policy.json", defaultContents)
+
+	// now add redis in
+	// TODO: Jackson plz add your pod file to the webhook folder somewhere and fix the filename here
+	AddPod("webhook/redis-default.yaml")
+
+	// now write back the user info
+	util.WriteFile("webhook/admission_policy.json", userContents)
+
 }
 
 // GenCerts Method to generate TLS certifications and cluster configs
 func GenCerts() {
-    // Status print
-    fmt.Println("Generating TLS certificate, key, and CA bundle and injecting into configuration files")
+	// Status print
+	fmt.Println("Generating TLS certificate, key, and CA bundle and injecting into configuration files")
 
-    // Create command
-    cmd := exec.Command("/bin/sh", "./pkg/tls/gen_certs.sh")
+	// Create command
+	cmd := exec.Command("/bin/sh", "./pkg/tls/gen_certs.sh")
 
-    // Run and handle errors
-    err := cmd.Run()
-    // Crash if error
-    util.FatalErrorCheck(err, true)
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.FatalErrorCheck(err, true)
 
-    // Inject CA Bundle into validating.config.yaml
-    util.InjectYamlCA("./pkg/cluster-config/validating.config.yaml",
-    "./pkg/cluster-config/validating.config.template.yaml", "./pkg/tls/cab64.crt")
+	// Inject CA Bundle into validating.config.yaml
+	util.InjectYamlCA("./pkg/cluster-config/validating.config.yaml",
+		"./pkg/cluster-config/validating.config.template.yaml", "./pkg/tls/cab64.crt")
 }
 
 // ApplyConfig Method to apply a configuration YAML file to a cluster using kubectl
@@ -175,4 +190,3 @@ func AddPod(pod_config_path string) {
 	// Crash if error
 	util.NonfatalErrorCheck(err, true)
 }
-

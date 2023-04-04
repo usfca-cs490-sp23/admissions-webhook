@@ -1,0 +1,8 @@
+{
+  "severity_limit": "Setup",
+  "id_whitelist": [
+    "CVE-2019-8457",
+    "CVE-2022-0543",
+    "CVE-2022-3734"
+  ]
+}
