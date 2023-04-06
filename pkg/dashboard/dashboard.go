@@ -3,15 +3,15 @@ package dashboard
 import (
 	"os"
 	"os/exec"
+	"runtime"
 
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
 
 // DashboardUpdate TODO: Return a DashboardUpdate struct with the result of checking the internals of the pod
 type DashboardUpdate struct {
-	// TODO: make a list of all SBOMs from the pod to add to DB / check with grype
-	// TODO:
-	Denied bool
+	CVEList map[string][]string
+	Denied  bool
 }
 
 // DashInit initiates the dashboard on user's local computer
@@ -19,16 +19,17 @@ func DashInit() {
 	cmd := exec.Command("kubectl", "apply", "-f", "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml")
 	// Run and handle errors
 	err := cmd.Run()
-	util.FatalErrorCheck(err, false)
+	util.NonfatalErrorCheck(err, false)
 
 	print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
-
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
+	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
+	RunDashboard()
 
-	cmd = exec.Command("kubectl", "proxy")
-	// Run and handle errors
-	err = cmd.Run()
-	util.FatalErrorCheck(err, false)
+	// cmd = exec.Command("kubectl", "proxy")
+	// // Run and handle errors
+	// err = cmd.Run()
+	// util.NonfatalErrorCheck(err, false)
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
 
@@ -37,12 +38,12 @@ func DashUser(adminUser string, adminRb string) {
 	//create admin service account (see dashboard-adminuser.yaml)
 	cmd := exec.Command("kubectl", "apply", "-f", adminUser)
 	err := cmd.Run()
-	util.FatalErrorCheck(err, false)
+	util.NonfatalErrorCheck(err, false)
 
 	//create cluster role binding (see admin-rb.yaml)
 	cmd = exec.Command("kubectl", "apply", "-f", adminRb)
 	err = cmd.Run()
-	util.FatalErrorCheck(err, false)
+	util.NonfatalErrorCheck(err, false)
 
 	//name of the service account
 	saName := "admin-user"
@@ -52,8 +53,31 @@ func DashUser(adminUser string, adminRb string) {
 	tkn.Stdout = os.Stdout
 	tkn.Stderr = os.Stderr
 	err = tkn.Run()
-	util.FatalErrorCheck(err, false)
+	util.NonfatalErrorCheck(err, false)
 
+}
+
+func RunDashboard() {
+	cmd := exec.Command("kubectl", "proxy")
+	// Run and handle errors
+	err := cmd.Run()
+	util.NonfatalErrorCheck(err, false)
+}
+
+func OpenLink(link string) {
+	var cmd string
+	os := runtime.GOOS
+
+	if os == "windows" {
+		cmd = "cmd /c start"
+	} else if os == "darwin" {
+		cmd = "open"
+	} else {
+		cmd = "xdg-open"
+	}
+	site := exec.Command(cmd, link)
+	err := site.Run()
+	util.NonfatalErrorCheck(err, false)
 }
 
 // BadPodDashUpdate TODO: expand this to have field values expressing that the pod could not be examined
