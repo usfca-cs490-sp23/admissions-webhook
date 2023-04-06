@@ -21,14 +21,15 @@ func DashInit() {
 	err := cmd.Run()
 	util.NonfatalErrorCheck(err, false)
 
-	//print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
+	print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
 	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
+	RunDashboard()
 
-	cmd = exec.Command("kubectl", "proxy")
-	// Run and handle errors
-	err = cmd.Run()
-	util.NonfatalErrorCheck(err, false)
+	// cmd = exec.Command("kubectl", "proxy")
+	// // Run and handle errors
+	// err = cmd.Run()
+	// util.NonfatalErrorCheck(err, false)
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
 
@@ -54,6 +55,13 @@ func DashUser(adminUser string, adminRb string) {
 	err = tkn.Run()
 	util.NonfatalErrorCheck(err, false)
 
+}
+
+func RunDashboard() {
+	cmd := exec.Command("kubectl", "proxy")
+	// Run and handle errors
+	err := cmd.Run()
+	util.NonfatalErrorCheck(err, false)
 }
 
 func OpenLink(link string) {
