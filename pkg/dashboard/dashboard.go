@@ -54,21 +54,15 @@ func DashUser(adminUser string, adminRb string) {
 
 func CopyTkn(code string) {
 	os := runtime.GOOS
+	code = "\"" + code + "\""
 	if os == "windows" {
-		code = "echo \"" + code + "\" | clip"
+		exec.Command("echo", code, "|", "clip").Run()
 	} else if os == "darwin" {
 		code = "echo \"" + code + "\" | pbcopy"
+		exec.Command("sh", "-c", code).Run()
 	} else if os == "linux" {
-		os_type := exec.Command("echo", "$XDG_SESSION_TYPE")
-		out, err := os_type.CombinedOutput()
-		if string(out) == "wayland" {
-			code = "echo \"" + code + "\" | xclip -selection c"
-		} else {
-			code = "echo \"" + code + "\" | xclip"
-		}
-		util.NonfatalErrorCheck(err, false)
+		exec.Command("echo", code, "|", "xclip", "-selection", "c").Run()
 	}
-	exec.Command("sh", "-c", code).Run()
 }
 
 func RunDashboard() {
