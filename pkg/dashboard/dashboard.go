@@ -62,7 +62,6 @@ func CopyTkn(code string) {
 		command = "pbcopy"
 	} else if os == "linux" {
 		command = "xclip -sel clip"
-		code = "echo \"" + code + "\" | xclip -selection c"
 	}
 	code = "echo \"" + code + "\" | " + command
 	exec.Command("bash", "-c", code).Run()
