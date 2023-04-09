@@ -58,8 +58,15 @@ func CopyTkn(code string) {
 		code = "echo \"" + code + "\" | clip"
 	} else if os == "darwin" {
 		code = "echo \"" + code + "\" | pbcopy"
-	} else {
-		code = "echo \"" + code + "\" | xclip"
+	} else if os == "linux" {
+		os_type := exec.Command("echo", "$XDG_SESSION_TYPE")
+		out, err := os_type.CombinedOutput()
+		if string(out) == "wayland" {
+			code = "echo \"" + code + "\" | xclip -selection c"
+		} else {
+			code = "echo \"" + code + "\" | xclip"
+		}
+		util.NonfatalErrorCheck(err, false)
 	}
 	exec.Command("sh", "-c", code).Run()
 }
