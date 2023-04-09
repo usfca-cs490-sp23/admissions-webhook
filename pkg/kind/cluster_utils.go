@@ -118,18 +118,17 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 
 	// using hidden policy file trickery to let the redis pod in at startup
 	// read in each file and store the data
-	userContents := util.ReadFile("webhook/admission_policy.json")
-	defaultContents := util.ReadFile("webhook/.default_policy.json")
+	userContents := util.ReadFile("./pkg/webhook/admission_policy.json")
+	defaultContents := util.ReadFile("./pkg/webhook/.default_policy.json")
 
 	// write the default data to the user file to allow redis into the cluster
-	util.WriteFile("webhook/admission_policy.json", defaultContents)
+	util.WriteFile("./pkg/webhook/admission_policy.json", defaultContents)
 
 	// now add redis in
-	// TODO: Jackson plz add your pod file to the webhook folder somewhere and fix the filename here
-	AddPod("webhook/redis-default.yaml")
+	AddPod("./pkg/webhook/database/redis.yaml")
 
 	// now write back the user info
-	util.WriteFile("webhook/admission_policy.json", userContents)
+	util.WriteFile("./pkg/webhook/admission_policy.json", userContents)
 
 }
 
