@@ -124,8 +124,9 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// write the default data to the user file to allow redis into the cluster
 	util.WriteFile("./pkg/webhook/admission_policy.json", defaultContents)
 
-	// now add redis in
-	AddPod("./pkg/webhook/database/redis.yaml")
+	// TODO: Configure and apply redis
+	CreateConfigMap("./pkg/webhook/database/redis-config.yaml")
+	AddPod("./pkg/webhook/database/redis-pod.yaml")
 
 	// now write back the user info
 	util.WriteFile("./pkg/webhook/admission_policy.json", userContents)
@@ -181,6 +182,19 @@ func DescribeHook(hook_name string) {
 func AddPod(pod_config_path string) {
 	// Create command
 	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+// CreateConfigMap method to create a new ConfigMap for a pod
+func CreateConfigMap(config_path string) {
+	// Create command
+	cmd := exec.Command("kubectl", "create", "-f", config_path)
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 
