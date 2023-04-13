@@ -124,7 +124,7 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// write the default data to the user file to allow redis into the cluster
 	util.WriteFile("./pkg/webhook/admission_policy.json", defaultContents)
 
-	// TODO: Configure and apply redis
+	// Configure and apply redis
 	CreateConfigMap("./pkg/webhook/database/redis-config.yaml")
 	AddPod("./pkg/webhook/database/redis-pod.yaml")
 

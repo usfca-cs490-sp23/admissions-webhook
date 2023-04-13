@@ -18,7 +18,7 @@ type Match struct {
 	Vulnerability Vulns `json:"vulnerability"`
 }
 
-// Vulns TODO: do the rest of the fileds if need be
+// Vulns the fields for the vulnerability data
 type Vulns struct {
 	ID         string `json:"id"`
 	DataSource string `json:"dataSource"`
