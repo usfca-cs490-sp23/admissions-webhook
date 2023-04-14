@@ -5,7 +5,7 @@ metadata:
 spec:
   containers:
     - name: redis
-      image: redis:5.0.4
+      image: redis:latest
       command:
         - redis-server
         - "/redis-master/redis.conf"

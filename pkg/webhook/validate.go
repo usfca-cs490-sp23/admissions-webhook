@@ -1,13 +1,14 @@
 package webhook
 
 import (
+	"context"
 	"encoding/json"
+	"github.com/redis/go-redis/v9"
 	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
+	corev1 "k8s.io/api/core/v1"
 	"log"
 	"os/exec"
-
-	corev1 "k8s.io/api/core/v1"
 )
 
 // Evaluation special struct that acts as the top level of the json parsing structure for reading grype results
@@ -30,6 +31,11 @@ type Vulns struct {
 type Policy struct {
 	SeverityLimit string   `json:"severity_limit"`
 	Whitelist     []string `json:"id_whitelist"`
+}
+
+type Validator struct {
+	Severity  int
+	WhiteList map[string]struct{}
 }
 
 // convertSeverityString takes a string form of a severity for admission policy and converts it to the comparable integer form
@@ -65,7 +71,7 @@ func compareSeverity(givenSeverity string, limit int) bool {
 }
 
 // ConstructPolicy reads in the admission_policy.json file and parses it into usable data via the Policy struct
-func ConstructPolicy(policyFile string) (int, map[string]int) {
+func ConstructPolicy(policyFile string) *Validator {
 	// read the file back in as a string
 	rawContent := util.ReadFile(policyFile)
 
@@ -76,14 +82,14 @@ func ConstructPolicy(policyFile string) (int, map[string]int) {
 	// get the severity limit and convert to int for easier comparisons
 	rawSeverity := policyInfo.SeverityLimit
 	severityLimit := convertSeverityString(rawSeverity)
-	// make a map to speed up search time later
-	whiteListMap := make(map[string]int)
+	// make a map to speed up search time later (essentailly making a set)
+	whiteListMap := make(map[string]struct{})
 	for _, id := range policyInfo.Whitelist {
-		whiteListMap[id] = 1
+		whiteListMap[id] = struct{}{}
 	}
 
-	// return the two pieces of info needed to enforce the policy
-	return severityLimit, whiteListMap
+	// return the two pieces of info needed to enforce the policy in a Validator literal
+	return &Validator{severityLimit, whiteListMap}
 }
 
 // generateSBOM generates an SBOM from an image and stores it in an argued path
@@ -103,11 +109,7 @@ func generateSBOM(outfile, image string) {
 // writes the grype evaluation results to a json file, reads the evaluation into the special struct,
 // checks if that image breaks the security rules (has "Critical" rated CVEs),
 // and returns false if the rules are not broken
-func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteListMap map[string]int) []string {
-	timeName := util.FormatTime()
-	//EX: evals/nginx_eval_2023-3-20_17-57-50.json
-	outFile := "evals/" + imageName + "_eval_" + timeName + ".json"
-
+func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteListMap map[string]struct{}) []string {
 	// run grype command
 	givenSBOM := "sbom:./" + sbomFile
 	// To scan an SBOM: grype sbom:./example.json
@@ -115,17 +117,13 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 	out, err := exec.Command("grype", givenSBOM, "-o", "json").Output()
 	// Crash if there are any errors
 	util.FatalErrorCheck(err, true)
-	log.Print("validate.go: evaluateImage -> grype ran successfully and stored output in " + outFile)
+	log.Print("validate.go: evaluateImage -> grype ran successfully")
 
-	// Write output to file
-	util.WriteFile(outFile, string(out))
-
-	// read the file back in as a string
-	rawContent := util.ReadFile(outFile)
+	// Got rid of extra file IO here, big win
 
 	// create and populate a struct that is tailor-made for the json structure output by grype
 	var result Evaluation
-	_ = json.Unmarshal([]byte(rawContent), &result)
+	_ = json.Unmarshal(out, &result)
 
 	// list to store each CVE that breaks policy from this image
 	var cveList []string
@@ -149,44 +147,89 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 	return cveList
 }
 
+// dbLookup retrieves an SBOM from the database if it exists
+func dbLookup(dbKey string, monthNum int) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "10.244.0.5:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	// Just using this bc it is apparently the 'default' for starting contexts, if there is a better one plz fix
+	ctx := context.Background()
+
+	// Get the direct value from
+	val, err := client.Get(ctx, dbKey).Result()
+
+	// TODO: Look for current first, then if not present look for old, if old present remove, then generate new (and put later)
+	// key did not exist
+	if err == redis.Nil {
+		if val == "" {
+			return
+		}
+	}
+
+	if err != nil {
+		// TODO: remove panic
+		panic(err)
+	}
+
+}
+
+// TODO: parse the file name so that the month is included with the image name, so at least once a month a fresh SBOM gets made (this avoids the issue of image versioning)
+// dbStore stores an SBOM given it's file name and ...??????
+func dbStore() {
+	client := redis.NewClient(&redis.Options{
+		Addr:     "10.244.0.5:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	// Just using this bc it is apparently the 'default' for starting contexts, if there is a better one plz fix
+	ctx := context.Background()
+
+	// This is an example of how to store values into the database
+	err := client.Set(ctx, "foo", "bar", 0).Err()
+	if err != nil {
+		// TODO: remove panic
+		panic(err)
+	}
+}
+
 // checkPodImages pulls out all images from a pod struct and sends them to the DB interface,
 // which then checks if an SBOM exists for each (if not, then sends the image to syft) and then,
 // based off the result of grype (which should return to this function) and says what CVEs
 // exist within each image, and if any of those CVEs are unacceptable, the whole pod is Denied
-func checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
+func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	containers := pod.Spec.Containers
-	// get the number of images
-	sliceSize := len(containers)
-	// setup an empty slice to hold each image
-	imageSlice := make([]string, sliceSize)
 
-	// get the security policy here (any amount of repeated calculations someone would argue, I argue this adds per pod flexibility, and NO I don't care who says to change it
-	severityLimit, whiteListMap := ConstructPolicy("webhook/admission_policy.json")
-
-	counter := 0
-	// extract all images and store in the list
 	failure := false
 	// make a map[string][]string to store image name as key, and it's cveList as value
 	imageCVEMap := make(map[string][]string)
-	for range containers {
-		imageSlice[counter] = containers[counter].Image
-
+	for _, container := range containers {
 		// get the time to make the file names unique
 		timeRaw := util.FormatTime()
-		// EX: sboms/nginx_sbom_2023-3-20_17-57-50.json
-		sbomName := "sboms/" + containers[counter].Image + "_sbom_" + timeRaw + ".json"
-		generateSBOM(sbomName, containers[counter].Image)
 
-		grypeRes := evaluateImage(sbomName, containers[counter].Image, severityLimit, whiteListMap)
+		//TODO: parse name, try to grab from db, if fail or different month, make new sb and send to db
+		//monthString := strings.Split(timeRaw, "-")[1]
+		//monthInt, _ := strconv.Atoi(monthString)
+		//sbomDbName := containers[counter].Image + monthString
+		// dbLookup(sbomDbName, monthInt)
+		//                      year-month-day
+		// EX: sboms/nginx_sbom_2023-3-20_17-57-50.json
+		// TODO: fix for all file names
+		//sbomName := fmt.Sprintf("sboms/%s_sbom_%s.json", container.Image, timeRaw)
+		sbomName := "sboms/" + container.Image + "_sbom_" + timeRaw + ".json"
+		generateSBOM(sbomName, container.Image)
+
+		grypeRes := evaluateImage(sbomName, container.Image, v.Severity, v.WhiteList)
 		log.Print("validate.go: checkPodImages -> successfully evaluated vulnerabilities")
 
 		// if any CVE's broke policy then add this image to the map of bad images
 		if len(grypeRes) > 0 {
-			imageCVEMap[containers[counter].Image] = grypeRes
+			imageCVEMap[container.Image] = grypeRes
 			failure = true
 		}
-
-		counter++
 	}
 
 	// get the pod name for the print-out

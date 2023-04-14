@@ -14,8 +14,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+var validator *Validator
+
 // Build builds the webhook
 func Build() {
+	// added for consistent cluster-level policy enforcement
+	validator = ConstructPolicy("webhook/admission_policy.json")
+
 	// handle our core application
 	http.HandleFunc("/validate-pods", ValidatePod)
 
@@ -126,7 +131,7 @@ func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.Admi
 	}
 
 	//v := validation.NewValidator(a.Logger)
-	podDecision, err := checkPodImages(pod)
+	podDecision, err := validator.checkPodImages(pod)
 	if err != nil {
 		//e := fmt.Sprintf("could not validate pod: %v", err)
 		return nil, dashboard.BadPodDashUpdate(), err
