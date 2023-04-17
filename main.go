@@ -24,6 +24,8 @@ func main () {
     flag.Bool("hook", false, "start webhook, should only be called by Docker container")
 	// Reconfigure cluster flag
     flag.Bool("reconfigure", false, "reconfigure the cluster")
+    // Audit the cluster
+    flag.Bool("audit", false, "dev flag")
     // Display logs
     flag.Bool("logstream", false, "stream webhook logs to terminal")
     // Show all pods in kind-control-plane node
@@ -34,8 +36,6 @@ func main () {
     flag.Bool("status", false, "print out description of webhook pod")
     // Build hook flag, should only be called by Docker container
 	flag.Bool("shutdown", false, "shutdown the cluster")
-
-    flag.Bool("dev", false, "dev flag")
 
 	// Check for flags
 	flag.Parse()
