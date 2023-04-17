@@ -25,7 +25,7 @@ func main () {
 	// Reconfigure cluster flag
     flag.Bool("reconfigure", false, "reconfigure the cluster")
     // Audit the cluster
-    flag.Bool("audit", false, "dev flag")
+    flag.Bool("audit", false, "audit the cluster for vulnerabilities")
     // Display logs
     flag.Bool("logstream", false, "stream webhook logs to terminal")
     // Show all pods in kind-control-plane node
@@ -39,8 +39,6 @@ func main () {
 
 	// Check for flags
 	flag.Parse()
-
-
 
     // Create cluster with argued name
 	if util.IsFlagRaised("create") {
