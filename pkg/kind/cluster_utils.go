@@ -2,12 +2,27 @@ package kind
 
 import (
 	"fmt"
+    "regexp"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"log"
 	"os"
 	"os/exec"
     "strings"
 )
+
+// Pod struct for wide output of kubectl get pods
+type Pod struct {
+    Namespace []byte
+    Name []byte
+    Ready []byte
+    Status []byte
+    Restarts []byte
+    Age []byte
+    Ip []byte
+    Node []byte
+    Nominated_node []byte
+    Readiness_gates []byte
+}
 
 // GetPodName get an argued pod's name
 func GetPodName(pod_name string) string {
@@ -39,16 +54,79 @@ func StreamLogs(pod_name string) {
     util.FatalErrorCheck(err, true)
 }
 
-func GetPods(node_name string) string {
+// GetPods gets the pods in the kind-control-plane
+func GetPods(node_name string) []byte {
     // Create a logging command with kubectl
     out, err := exec.Command("kubectl", "get", "pods", "--all-namespaces", "-o", "wide", 
         "--field-selector", string("spec.nodeName=" + node_name)).Output()
 
+    // Run the command and handle errors
+    util.NonfatalErrorCheck(err, true)
+
+    return out
+}
+
+// GetPodsStruct gets the pod data from kubectl and stores the results in an array of structs
+func GetPodsStruct(node_name string) []Pod {
+    // Get the pods using kubectl wide option
+    get_pods := GetPods(node_name)
+
+    // Generate regex that matches all the words in a string
+    re := regexp.MustCompile(`\S+`)
+
+    // Initialize a new list of Pods
+    var pods []Pod = make([]Pod, strings.Count(string(get_pods), "\n"))
+
+    // Get all of the matches
+    matches := (re.FindAll(get_pods, -1))
+
+    // Initialize the counter of pods in the array
+    podCtr := 0
+
+    // Loop through the matches (ignoring the header)
+    for i := 12; i < len(matches); i += 10 {
+        // Store the relevant fields in a struct within the pods array
+        pods[podCtr] = Pod{
+            Namespace: matches[i],
+            Name: matches[i+1],
+            Ready: matches[i+2],
+            Status: matches[i+3],
+            Restarts: matches[i+4],
+            Age: matches[i+5],
+            Ip: matches[i+6],
+            Node: matches[i+7],
+            Nominated_node: matches[i+8],
+            Readiness_gates: matches[i+9],
+        }
+        podCtr++
+    }
+
+    return pods
+}
+
+// FindPod finds a Pod in a list of Pod structs by its name (first find)
+func FindPod(pods []Pod, target_name string) *Pod {
+    // Loop through pods
+    for i := range pods {
+        // If there is a match, return it
+        if string(pods[i].Name[0:len(target_name)]) == target_name {
+            return &pods[i]
+        }
+    }
+    return nil
+}
+
+// IsValidImage checks if the argued image is present in dockerhub
+func IsValidImage(image_name string) bool {
+    out, err := exec.Command("docker", "manifest", "inspect", image_name).Output()
+
+    str_out := string(out)
 
     // Run the command and handle errors
     util.NonfatalErrorCheck(err, true)
 
-    return string(out)
+    return strings.Compare(str_out[0:6], "errors") != 0
+
 }
 
 // CreateCluster Method to create a cluster using kind
@@ -91,7 +169,7 @@ func Info() {
 	}
 }
 
-// BuildLoadHookImage Methoed to build an image from a specified Dockerfile
+// BuildLoadHookImage Method to build an image from a specified Dockerfile
 func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// Status print
 	fmt.Println("Building Docker image", (image_name + ":" + version), "from Dockerfile at", dfile_path)
@@ -100,7 +178,7 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	os.Setenv("DOCKER_BUILDKIT", "1")
 	cmd := exec.Command("docker", "build", "-t", (image_name + ":" + version), dfile_path)
 	cmd.Stderr = os.Stderr
-
+	
 	// Run and handle errors
 	err := cmd.Run()
 	// Crash if error
@@ -167,6 +245,19 @@ func DescribeHook(hook_name string) {
 func AddPod(pod_config_path string) {
 	// Create command
 	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+// DeleteItem takes an item type and its name in order to delete it from a cluster
+func DeleteItem(type_, name string) {
+	// Create command
+    cmd := exec.Command("kubectl", "delete", type_, name)
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 
