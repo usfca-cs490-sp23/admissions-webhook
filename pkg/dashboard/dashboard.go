@@ -24,6 +24,7 @@ func DashInit() {
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
 	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
 	RunDashboard()
+	//To open logs: Workloads>Pods>webhook>OpenLogs
 
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
@@ -52,6 +53,7 @@ func DashUser(adminUser string, adminRb string) {
 
 }
 
+// CopyTkn copies the bearer token (for login) to the user's clipboard
 func CopyTkn(code string) {
 	os := runtime.GOOS
 	//code = "\"" + code + "\""
@@ -67,6 +69,7 @@ func CopyTkn(code string) {
 	exec.Command("bash", "-c", code).Run()
 }
 
+// RunDashboard initiates the dashboard on http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 func RunDashboard() {
 	cmd := exec.Command("kubectl", "proxy")
 	// Run and handle errors
@@ -74,6 +77,7 @@ func RunDashboard() {
 	util.NonfatalErrorCheck(err, false)
 }
 
+// OpenLink contains cross-os compatibility to open the dashboard link in the user's preferred browser
 func OpenLink(link string) {
 	var cmd string
 	os := runtime.GOOS
