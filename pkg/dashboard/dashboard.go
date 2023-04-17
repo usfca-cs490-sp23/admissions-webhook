@@ -24,7 +24,6 @@ func DashInit() {
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
 	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
 	RunDashboard()
-	//To open logs: Workloads>Pods>webhook>OpenLogs
 
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
@@ -56,7 +55,6 @@ func DashUser(adminUser string, adminRb string) {
 // CopyTkn copies the bearer token (for login) to the user's clipboard
 func CopyTkn(code string) {
 	os := runtime.GOOS
-	//code = "\"" + code + "\""
 	var command string
 	if os == "windows" {
 		command = "clip"
