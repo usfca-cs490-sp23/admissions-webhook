@@ -1,7 +1,6 @@
 package dashboard
 
 import (
-	"os"
 	"os/exec"
 	"runtime"
 
@@ -26,10 +25,6 @@ func DashInit() {
 	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
 	RunDashboard()
 
-	// cmd = exec.Command("kubectl", "proxy")
-	// // Run and handle errors
-	// err = cmd.Run()
-	// util.NonfatalErrorCheck(err, false)
 	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
 
@@ -50,13 +45,29 @@ func DashUser(adminUser string, adminRb string) {
 
 	tkn := exec.Command("kubectl", "-n", "kubernetes-dashboard", "create", "token", saName)
 	print("and enter token: ")
-	tkn.Stdout = os.Stdout
-	tkn.Stderr = os.Stderr
-	err = tkn.Run()
+	out, err := tkn.CombinedOutput()
+	print(string(out))
 	util.NonfatalErrorCheck(err, false)
+	CopyTkn(string(out))
 
 }
 
+// CopyTkn copies the bearer token (for login) to the user's clipboard
+func CopyTkn(code string) {
+	os := runtime.GOOS
+	var command string
+	if os == "windows" {
+		command = "clip"
+	} else if os == "darwin" {
+		command = "pbcopy"
+	} else if os == "linux" {
+		command = "xclip -sel clip"
+	}
+	code = "echo \"" + code + "\" | " + command
+	exec.Command("bash", "-c", code).Run()
+}
+
+// RunDashboard initiates the dashboard on http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/
 func RunDashboard() {
 	cmd := exec.Command("kubectl", "proxy")
 	// Run and handle errors
@@ -64,6 +75,7 @@ func RunDashboard() {
 	util.NonfatalErrorCheck(err, false)
 }
 
+// OpenLink contains cross-os compatibility to open the dashboard link in the user's preferred browser
 func OpenLink(link string) {
 	var cmd string
 	os := runtime.GOOS
