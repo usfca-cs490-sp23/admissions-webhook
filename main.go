@@ -87,7 +87,7 @@ func main () {
 
     // Show all pods in kind-control-plane node
     if util.IsFlagRaised("pods") {
-        fmt.Println(kind.GetPods("kind-control-plane"))
+        fmt.Println(string(kind.GetPods("kind-control-plane")))
     }
 
     // Add a pod
