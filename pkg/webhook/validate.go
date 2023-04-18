@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
+	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"log"
@@ -156,8 +157,11 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 
 // dbLookup retrieves an SBOM from the database if it exists
 func dbLookup(dbIName string, monthNum int) (sbomData string, err error) {
+    // Get the redis pod's data
+    pods := kind.GetPodsStruct("kind-control-plane")
+    redisPodIp:= string(kind.FindPod(pods, "redis").Ip)
 	client := redis.NewClient(&redis.Options{
-		Addr:     "10.244.0.5:6379",
+		Addr:     string(redisPodIp + ":6379"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
@@ -194,8 +198,12 @@ func dbLookup(dbIName string, monthNum int) (sbomData string, err error) {
 
 // dbStore stores an SBOM given it's name and the value of the sbom
 func dbStore(dbIName string, monthNum int, sbomValue string) {
+    // Get the redis pod's data
+    pods := kind.GetPodsStruct("kind-control-plane")
+    redisPodIp:= string(kind.FindPod(pods, "redis").Ip)
+
 	client := redis.NewClient(&redis.Options{
-		Addr:     "10.244.0.5:6379",
+		Addr:     string(redisPodIp + ":6379"),
 		Password: "", // no password set
 		DB:       0,  // use default DB
 	})
