@@ -6,6 +6,7 @@ import (
 	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"github.com/usfca-cs490/admissions-webhook/pkg/webhook"
+	"github.com/usfca-cs490/admissions-webhook/pkg/audit"
     "github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 )
 
@@ -23,6 +24,8 @@ func main () {
     flag.Bool("hook", false, "start webhook, should only be called by Docker container")
 	// Reconfigure cluster flag
     flag.Bool("reconfigure", false, "reconfigure the cluster")
+    // Audit the cluster
+    flag.Bool("audit", false, "audit the cluster for vulnerabilities")
     // Display logs
     flag.Bool("logstream", false, "stream webhook logs to terminal")
     // Show all pods in kind-control-plane node
@@ -69,6 +72,11 @@ func main () {
         // Apply configs
         kind.ApplyConfig("./pkg/cluster-config")
         kind.ApplyConfig("./pkg/webhook/deploy-rules")
+    }
+
+    // Audit the cluster using kubeaudit
+    if util.IsFlagRaised("audit") {
+        audit.Audit()
     }
 
     // Stream cluster logs to terminal

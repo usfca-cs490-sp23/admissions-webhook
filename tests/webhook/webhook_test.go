@@ -17,7 +17,7 @@ func TestWebhook(t * testing.T) {
         kind.AddPod(string("../../pkg/kind/test-pods/" + test_pod + ".yaml"))
 
         // Get a list of all the pods in the cluster
-        pods := kind.GetPods("kind-control-plane")
+        pods := string(kind.GetPods("kind-control-plane"))
        
         // Check that all of the good pods are in the cluster
         if i != 2 {
