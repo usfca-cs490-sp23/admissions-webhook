@@ -4,13 +4,23 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"testing"
 )
 
 /* Test case to check that all external dependencies are present on the system */
 func TestDependencies(t *testing.T) {
 	// Array of dependencies
-	dependencies := []string{"kind", "kubectl", "syft", "grype", "openssl", "docker", "xclip", "pbcopy"}
+	dependencies := []string{"kind", "kubectl", "syft", "grype", "openssl", "docker"}
+
+	op_sys := runtime.GOOS
+	if op_sys == "windows" {
+		dependencies = append(dependencies, "clip")
+	} else if op_sys == "darwin" {
+		dependencies = append(dependencies, "pbcopy")
+	} else if op_sys == "linux" {
+		dependencies = append(dependencies, "xclip")
+	}
 
 	// Loop through every dependency in array
 	for _, dependency := range dependencies {
