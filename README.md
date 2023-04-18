@@ -28,6 +28,23 @@ Shutting down the cluster can be done with another wrapper method:
 
 `go run main.go -shutdown`
 
+### Further Functionalities
+
+| Flag           | Arg               | Description                 |
+|----------------|-------------------|-----------------------------|
+| `-h`           |                   | get list of flags |
+| `-add`         | path to yaml file | attempt to add a pod to the cluster (default "./pkg/kind/test-pods/hello-good.yaml") |
+| `-audit`       |                   | audit the cluster for vulnerabilities |
+| `-create`      |                   | create a kind cluster |
+| `-dashboard`   |                   | launch cluster dashboard  |
+| `-deploy`      |                   | apply admissions webhook to cluster |
+| `-info`        |                   | get cluster info |
+| `-logstream`   |                   | stream webhook logs to terminal |
+| `-pods`        |                   | show all pods in the kind-control-plane node |
+| `-reconfigure` |                   | reconfigure the cluster |
+| `-shutdown`    |                   | shutdown the cluster |
+| `-status`      |                   | print out description of webhook pod |
+
 To add a pod is a simple wrapper on the standard applying functionality:
 
 `go run main.go -add <path-to-.yaml-file>`
@@ -36,8 +53,9 @@ The wehbook can be tested with three test pods stored in `pkg/kind/test-pods/` b
 
 `go test ./tests/webhook/ -v`
 
-Starting up the K8's dashboard is done with: `go run main.go -dashboard` and then
-following the steps given once it is started
+The webhook can be audited with 
+
+Starting up the K8's dashboard is done with: `go run main.go -dashboard` and then following the steps given once it is started
 
 A full list of functionalities can be seen by running `go run main.go -h`
 
@@ -50,6 +68,9 @@ A full list of functionalities can be seen by running `go run main.go -h`
 ├── go.sum
 ├── main.go
 ├── pkg
+│   ├── audit
+│   │   ├── auditor.go
+│   │   └── auditor.yaml
 │   ├── cluster-config
 │   │   ├── app.ns.yaml
 │   │   ├── validating.config.template.yaml
@@ -59,16 +80,16 @@ A full list of functionalities can be seen by running `go run main.go -h`
 │   │   ├── dashboard-adminuser.yaml
 │   │   └── dashboard.go
 │   ├── evals
+│   │   └── test.json
 │   ├── kind
 │   │   ├── cluster_utils.go
 │   │   ├── kind.cluster.yaml
-│   │   ├── services
-│   │   │   └── load-balancer.yaml
 │   │   └── test-pods
 │   │       ├── alpine-good.yaml
 │   │       ├── hello-good.yaml
 │   │       └── nginx-fail.yaml
 │   ├── sboms
+│   │   └── test.json
 │   ├── tls
 │   │   └── gen_certs.sh
 │   ├── util
@@ -82,6 +103,9 @@ A full list of functionalities can be seen by running `go run main.go -h`
 │       └── validate.go
 ├── README.md
 └── tests
-    └── startup_test.go
+    ├── install
+    │   └── startup_test.go
+    └── webhook
+        └── webhook_test.go
 
 ```
