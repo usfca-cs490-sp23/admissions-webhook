@@ -3,12 +3,16 @@ package webhook
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/redis/go-redis/v9"
 	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	corev1 "k8s.io/api/core/v1"
 	"log"
+	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 )
 
 // Evaluation special struct that acts as the top level of the json parsing structure for reading grype results
@@ -93,13 +97,16 @@ func ConstructPolicy(policyFile string) *Validator {
 }
 
 // generateSBOM generates an SBOM from an image and stores it in an argued path
-func generateSBOM(outfile, image string) {
+func generateSBOM(outfile, image string, monthInt int) {
 	// Create and run command
 	log.Print("validate.go: GenerateSBOM -> creating SBOM for " + image + "...")
 	out, err := exec.Command("syft", "-o", "json", image).Output()
 	// Crash if there are any errors
 	util.FatalErrorCheck(err, true)
 	log.Print("validate.go: GenerateSBOM -> created SBOM for " + image + " and stored at " + outfile)
+
+	// add info to db
+	dbStore(image, monthInt, string(out))
 
 	// Write output to file
 	util.WriteFile(outfile, string(out))
@@ -148,7 +155,7 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 }
 
 // dbLookup retrieves an SBOM from the database if it exists
-func dbLookup(dbKey string, monthNum int) {
+func dbLookup(dbIName string, monthNum int) (sbomData string, err error) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "10.244.0.5:6379",
 		Password: "", // no password set
@@ -157,28 +164,36 @@ func dbLookup(dbKey string, monthNum int) {
 
 	// Just using this bc it is apparently the 'default' for starting contexts, if there is a better one plz fix
 	ctx := context.Background()
+	lastMonthNum := monthNum - 1
+	lastMonth := strconv.Itoa(lastMonthNum)
+	dbKey := dbIName + strconv.Itoa(monthNum)
 
 	// Get the direct value from
 	val, err := client.Get(ctx, dbKey).Result()
 
-	// TODO: Look for current first, then if not present look for old, if old present remove, then generate new (and put later)
+	// Look for current first, then if not present look for old, if old present remove, then generate new (and put later)
 	// key did not exist
 	if err == redis.Nil {
-		if val == "" {
-			return
+		oldKey := dbIName + lastMonth
+		val, err = client.Get(ctx, oldKey).Result()
+		if err == redis.Nil {
+			return "", err
 		}
+		// remove old and return redis.nil to trigger new sbom spawn
+		_, err = client.Del(ctx, oldKey).Result()
+		return "", redis.Nil
 	}
 
 	if err != nil {
-		// TODO: remove panic
-		panic(err)
+		util.FatalErrorCheck(err, true)
 	}
 
+	// found a proper sbom so no need to gen new sbom
+	return val, nil
 }
 
-// TODO: parse the file name so that the month is included with the image name, so at least once a month a fresh SBOM gets made (this avoids the issue of image versioning)
-// dbStore stores an SBOM given it's file name and ...??????
-func dbStore() {
+// dbStore stores an SBOM given it's name and the value of the sbom
+func dbStore(dbIName string, monthNum int, sbomValue string) {
 	client := redis.NewClient(&redis.Options{
 		Addr:     "10.244.0.5:6379",
 		Password: "", // no password set
@@ -187,12 +202,12 @@ func dbStore() {
 
 	// Just using this bc it is apparently the 'default' for starting contexts, if there is a better one plz fix
 	ctx := context.Background()
+	dbKey := dbIName + strconv.Itoa(monthNum)
 
 	// This is an example of how to store values into the database
-	err := client.Set(ctx, "foo", "bar", 0).Err()
+	err := client.Set(ctx, dbKey, sbomValue, 0).Err()
 	if err != nil {
-		// TODO: remove panic
-		panic(err)
+		util.NonfatalErrorCheck(err, false)
 	}
 }
 
@@ -210,17 +225,21 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 		// get the time to make the file names unique
 		timeRaw := util.FormatTime()
 
-		//TODO: parse name, try to grab from db, if fail or different month, make new sb and send to db
-		//monthString := strings.Split(timeRaw, "-")[1]
-		//monthInt, _ := strconv.Atoi(monthString)
-		//sbomDbName := containers[counter].Image + monthString
-		// dbLookup(sbomDbName, monthInt)
-		//                      year-month-day
+		// parse name, try to grab from db, if fail or different month, make new sbom and send to db
+		monthString := strings.Split(timeRaw, "-")[1]
+		monthInt, _ := strconv.Atoi(monthString)
+		sbomVal, err := dbLookup(container.Image, monthInt)
+
 		// EX: sboms/nginx_sbom_2023-3-20_17-57-50.json
-		// TODO: fix for all file names
-		//sbomName := fmt.Sprintf("sboms/%s_sbom_%s.json", container.Image, timeRaw)
-		sbomName := "sboms/" + container.Image + "_sbom_" + timeRaw + ".json"
-		generateSBOM(sbomName, container.Image)
+		sbomName := fmt.Sprintf("sboms/%s_sbom_%s.json", container.Image, timeRaw)
+
+		// no db entry, gen new and store
+		if err == redis.Nil {
+			generateSBOM(sbomName, container.Image, monthInt)
+		} else {
+			// if db entry write to temp file
+			util.WriteFile(sbomName, sbomVal)
+		}
 
 		grypeRes := evaluateImage(sbomName, container.Image, v.Severity, v.WhiteList)
 		log.Print("validate.go: checkPodImages -> successfully evaluated vulnerabilities")
@@ -230,6 +249,14 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 			imageCVEMap[container.Image] = grypeRes
 			failure = true
 		}
+
+		// make a daemon to delete temp file
+		go func(filename string) {
+			err := os.Remove(filename)
+			if err != nil {
+				util.NonfatalErrorCheck(err, false)
+			}
+		}(sbomName)
 	}
 
 	// get the pod name for the print-out
