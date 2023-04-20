@@ -1,0 +1,6 @@
+{
+  "severity_limit": "High",
+  "id_whitelist": [
+    "CVE-2022-0543"
+  ]
+}

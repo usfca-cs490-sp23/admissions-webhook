@@ -1,0 +1,18 @@
+severity_limit sets the lowest threat severity of a CVE that should be rejected.
+Accepted values are in this order (case-sensitive):
+    Critical
+    High
+    Medium
+    Low
+    Negligible
+So, if you want to allow only medium and lesser severity CVEs, you would have `"severity_limit": "High",` in that line.
+This would reject any images coming in with a severity of High or Critical.
+
+id_whitelist is a list of CVE ids that you would like to allow regardless of their severity rating.
+It is going to look something like this example, depending on the number of ids you have in your list:
+"id_whitelist": [
+    "CVE-2005-2541",
+    "CVE-2007-5686"
+  ]
+And if you should have no ids to whitelist, then it should look like this:
+"id_whitelist": []
