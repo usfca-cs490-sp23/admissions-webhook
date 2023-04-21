@@ -5,8 +5,9 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
-    "time"
+	"time"
 )
 
 // NotYetImplemented Helper method to panic and trace to source method for unimplemented code
@@ -28,11 +29,11 @@ func IsFlagRaised(flag_name string) bool {
 // FatalErrorCheck Helper method to crash if errors exist
 func FatalErrorCheck(err error, verbose bool) {
 	if err != nil {
-        if verbose {
-            log.Print("\nERROR Fatal: " + err.Error() + "\n")
-        } else {
-            log.Print(err)
-        }
+		if verbose {
+			log.Print("\nERROR Fatal: " + err.Error() + "\n")
+		} else {
+			log.Print(err)
+		}
 		log.Fatal(err)
 	}
 }
@@ -40,11 +41,11 @@ func FatalErrorCheck(err error, verbose bool) {
 // NonfatalErrorCheck Helper method to output present errors but not crash
 func NonfatalErrorCheck(err error, verbose bool) {
 	if err != nil {
-        if verbose {
-            log.Print("\nERROR Nonfatal: " + err.Error() + "\n")
-        } else {
-            log.Print(err)
-        }
+		if verbose {
+			log.Print("\nERROR Nonfatal: " + err.Error() + "\n")
+		} else {
+			log.Print(err)
+		}
 	}
 }
 
@@ -102,4 +103,9 @@ func InjectYamlCA(target, template, injectable string) {
 
 	// Now write to file
 	WriteFile(target, config)
+}
+
+func WriteEvent(kind string, eventtype, reason, message string) {
+	event := "kubectl apply -f - <<EOF\napiVersion: v1\nkind: Event\nmetadata:\n  name: " + reason + "\n  namespace: default\ntype: " + eventtype + "\nmessage: '" + message + "'\ninvolvedObject:\n  kind: " + kind + "\nEOF"
+	exec.Command("bash", "-c", event).Run()
 }

@@ -2,12 +2,13 @@ package kind
 
 import (
 	"fmt"
-	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"log"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
 
 // Pod struct for wide output of kubectl get pods
@@ -256,6 +257,9 @@ func AddPod(pod_config_path string) {
 
 	// Run and handle errors
 	err := cmd.Run()
+	if err != nil {
+		util.WriteEvent("Pod", "Warning", "error", "Pod denied. This pod breaks security policy")
+	}
 	// Crash if error
 	util.NonfatalErrorCheck(err, true)
 }
