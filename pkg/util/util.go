@@ -111,9 +111,11 @@ func WriteEvent(name string, reason string, message string) {
 	filepath := "./pkg/util/" + name + ".yaml"
 	//if file doesn't exist already
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
+		temp_time := time.Now()
+		curr_time := temp_time.Format(time.RFC3339)
 		//generate initial yaml template for file
-		event := "apiVersion: v1\ncount: 0\nfirstTimestamp:\nkind: Event\nlastTimestamp:\nmetadata:\n  name: " +
-			name + "\n  namespace: default\n  creationTimestamp:\ntype: Warning\nreason: " + reason + "\nmessage: '" +
+		event := "apiVersion: v1\ncount: 0\nfirstTimestamp: '" + curr_time + "'\nkind: Event\nlastTimestamp:\nmetadata:\n  name: " +
+			name + "\n  namespace: default\n  creationTimestamp: '" + curr_time + "'\ntype: Warning\nreason: " + reason + "\nmessage: '" +
 			message + "'\ninvolvedObject:\n  kind: Pod\n  name: " + name +
 			"\nsource:\n  component: kubelet\n  host: kind-control-plane"
 		//write to file
@@ -121,24 +123,9 @@ func WriteEvent(name string, reason string, message string) {
 	}
 	r_event := ReadFile(filepath)
 
-	//fill in creation and first timestamp
-	r, _ := regexp.Compile(`creationTimestamp:[^\n]*`)
-	match := r.FindString(r_event)
-	//if there is no creation timestamp, insert current time
-	if len(match) <= len("creationTimestamp: ") {
-		temp_time := time.Now()
-		curr_time := temp_time.Format(time.RFC3339)
-		new_text := "creationTimestamp: '" + curr_time + "'"
-		r_event = ReplaceYaml(r_event, r, new_text)
-		r, _ = regexp.Compile(`firstTimestamp:[^\n]*`)
-		new_text = "firstTimestamp: '" + curr_time + "'"
-		r_event = ReplaceYaml(r_event, r, new_text)
-
-	}
-
 	//fill in count
-	r, _ = regexp.Compile(`count:[^\n]*`)
-	match = r.FindString(r_event)
+	r, _ := regexp.Compile(`count:[^\n]*`)
+	match := r.FindString(r_event)
 	num_reg, _ := regexp.Compile(`[\d]+`)
 	count_val, _ := strconv.Atoi(num_reg.FindString(match))
 	count_val++
