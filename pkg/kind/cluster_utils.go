@@ -258,7 +258,7 @@ func AddPod(pod_config_path string) {
 	// Run and handle errors
 	err := cmd.Run()
 	if err != nil {
-		util.WriteEvent("Pod", "Warning", "error", "Pod denied. This pod breaks security policy")
+		util.WriteEvent("errorpod", "PodDenied", "Pod denied. This pod breaks security policy")
 	}
 	// Crash if error
 	util.NonfatalErrorCheck(err, true)
