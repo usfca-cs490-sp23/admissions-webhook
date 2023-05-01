@@ -107,7 +107,7 @@ func InjectYamlCA(target, template, injectable string) {
 	WriteFile(target, config)
 }
 
-func WriteEvent(name string, reason string, message string) {
+func WriteEvent(name string, reason string, message string, e_type string) {
 	filepath := "./pkg/util/" + name + ".yaml"
 	//if file doesn't exist already
 	if _, err := os.Stat(filepath); os.IsNotExist(err) {
@@ -115,7 +115,7 @@ func WriteEvent(name string, reason string, message string) {
 		curr_time := temp_time.Format(time.RFC3339)
 		//generate initial yaml template for file
 		event := "apiVersion: v1\ncount: 0\nfirstTimestamp: '" + curr_time + "'\nkind: Event\nlastTimestamp:\nmetadata:\n  name: " +
-			name + "\n  namespace: default\n  creationTimestamp: '" + curr_time + "'\ntype: Warning\nreason: " + reason + "\nmessage: '" +
+			name + "\n  namespace: default\n  creationTimestamp: '" + curr_time + "'\ntype: " + e_type + "\nreason: " + reason + "\nmessage: '" +
 			message + "'\ninvolvedObject:\n  kind: Pod\n  name: " + name +
 			"\nsource:\n  component: kubelet\n  host: kind-control-plane"
 		//write to file
