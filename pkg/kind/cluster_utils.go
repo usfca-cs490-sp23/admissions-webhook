@@ -257,11 +257,10 @@ func AddPod(pod_config_path string) {
 
 	// Run and handle errors
 	err := cmd.Run()
+	//if error create custom event
 	if err != nil {
 		util.WriteEvent("errorpod", "PodDenied", "Pod denied. This pod breaks security policy", "Warning")
 	}
-	// Crash if error
-	util.NonfatalErrorCheck(err, true)
 }
 
 // CreateConfigMap method to create a new ConfigMap for a pod
