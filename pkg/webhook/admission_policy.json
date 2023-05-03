@@ -1,6 +1,7 @@
 {
   "severity_limit": "High",
   "id_whitelist": [
-    "CVE-2022-0543"
+    "CVE-2022-0543",
+    "CVE-2023-1255"
   ]
 }

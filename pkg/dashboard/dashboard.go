@@ -11,6 +11,7 @@ import (
 type DashboardUpdate struct {
 	CVEList map[string][]string
 	Denied  bool
+	PodName string
 }
 
 // DashInit initiates the dashboard on user's local computer
@@ -90,6 +91,11 @@ func OpenLink(link string) {
 	site := exec.Command(cmd, link)
 	err := site.Run()
 	util.NonfatalErrorCheck(err, false)
+}
+
+// ProcessEvent takes a filled out Dash struct and puts it's info into a dashboard event
+func ProcessEvent(update DashboardUpdate) {
+	util.WriteEvent(update.PodName, update.Denied, update.CVEList)
 }
 
 // BadPodDashUpdate TODO: expand this to have field values expressing that the pod could not be examined

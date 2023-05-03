@@ -272,9 +272,9 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 	// currently rejects any pod with an image containing a Critical level CVE
 	if failure {
 		log.Print("validate.go: checkPodImages -> " + podName + " was denied")
-		return dashboard.DashboardUpdate{Denied: true, CVEList: imageCVEMap}, nil
+		return dashboard.DashboardUpdate{Denied: true, CVEList: imageCVEMap, PodName: podName}, nil
 	}
 
 	log.Print("validate.go: checkPodImages -> " + podName + " was accepted")
-	return dashboard.DashboardUpdate{Denied: false, CVEList: imageCVEMap}, nil
+	return dashboard.DashboardUpdate{Denied: false, CVEList: imageCVEMap, PodName: podName}, nil
 }

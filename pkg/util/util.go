@@ -1,15 +1,21 @@
 package util
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	_ "k8s.io/client-go/applyconfigurations/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
-	"os/exec"
-	"regexp"
-	"strconv"
 	"strings"
 	"time"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 // NotYetImplemented Helper method to panic and trace to source method for unimplemented code
@@ -107,46 +113,81 @@ func InjectYamlCA(target, template, injectable string) {
 	WriteFile(target, config)
 }
 
-func WriteEvent(name string, reason string, message string, e_type string) {
-	filepath := "./pkg/util/" + name + ".yaml"
-	//if file doesn't exist already
-	if _, err := os.Stat(filepath); os.IsNotExist(err) {
-		temp_time := time.Now()
-		curr_time := temp_time.Format(time.RFC3339)
-		//generate initial yaml template for file
-		event := "apiVersion: v1\ncount: 0\nfirstTimestamp: '" + curr_time + "'\nkind: Event\nlastTimestamp:\nmetadata:\n  name: " +
-			name + "\n  namespace: default\n  creationTimestamp: '" + curr_time + "'\ntype: " + e_type + "\nreason: " + reason + "\nmessage: '" +
-			message + "'\ninvolvedObject:\n  kind: Pod\n  name: " + name +
-			"\nsource:\n  component: kubelet\n  host: kind-control-plane"
-		//write to file
-		WriteFile(filepath, event)
+func WriteEvent(podName string, reason bool, message map[string][]string) {
+	var newMess string
+	var cveMessage string
+	for key, val := range message {
+		// Convert each key/value pair in m to a string
+		newMess = fmt.Sprintf("%s=\"%s\"", key, val)
+		cveMessage = cveMessage + newMess
 	}
-	r_event := ReadFile(filepath)
 
-	//fill in count
-	r, _ := regexp.Compile(`count:[^\n]*`)
-	match := r.FindString(r_event)
-	num_reg, _ := regexp.Compile(`[\d]+`)
-	count_val, _ := strconv.Atoi(num_reg.FindString(match))
-	count_val++
-	new_text := "count: " + strconv.Itoa(count_val)
-	r_event = ReplaceYaml(r_event, r, new_text)
+	var eventReason string
+	var eventType string
+	// if true then the pod was denied
+	if reason {
+		eventReason = "Pod Denied"
+		eventType = "Warning"
+	} else {
+		eventReason = "Pod accepted"
+		eventType = "Normal"
+	}
 
-	//fill in last timestamp
-	temp_time := time.Now()
-	curr_time := temp_time.Format(time.RFC3339)
-	r, _ = regexp.Compile(`lastTimestamp:[^\n]*`)
-	new_text = "lastTimestamp: '" + curr_time + "'"
-	r_event = ReplaceYaml(r_event, r, new_text)
+	// set a name that will change even for duplicate pods
+	eventName := podName + FormatTime()
 
-	WriteFile(filepath, r_event)
+	//event := corev1.Event{
+	//	TypeMeta:            metav1.TypeMeta{},
+	//	ObjectMeta:          metav1.ObjectMeta{},
+	//	InvolvedObject:      corev1.ObjectReference{},
+	//	Reason:              "Pod Denied",
+	//	Message:             totMess,
+	//	Source:              corev1.EventSource{},
+	//	FirstTimestamp:      metav1.Time{},
+	//	LastTimestamp:       metav1.Time{},
+	//	Count:               0,
+	//	Type:                "Warning",
+	//	EventTime:           metav1.MicroTime{},
+	//	Series:              nil,
+	//	Action:              "",
+	//	Related:             nil,
+	//	ReportingController: "",
+	//	ReportingInstance:   "",
+	//}
 
-	command := "kubectl apply -f - <<EOF\n" + r_event + "\nEOF"
-	exec.Command("bash", "-c", command).Run()
-}
+	event := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      eventName,
+			Namespace: "apps",
+		},
+		InvolvedObject: corev1.ObjectReference{Namespace: "apps"},
+		Reason:         eventReason,
+		Message:        cveMessage,
+		Type:           eventType,
+		Source: corev1.EventSource{
+			Component: "the-captains-hook",
+		},
+	}
 
-func ReplaceYaml(content string, r *regexp.Regexp, new_text string) string {
-	text := r.ReplaceAllString(content, new_text)
-	return text
+	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	event.APIVersion = "v1"
 
+	var config *rest.Config
+	var err error
+	// Load kubeconfig from $HOME/.kube/config or in-cluster configuration
+	if _, err = os.Stat(os.Getenv("HOME") + "/.kube/config"); err == nil {
+		config, err = clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	} else {
+		config, err = rest.InClusterConfig()
+	}
+	NonfatalErrorCheck(err, true)
+
+	// Create Kubernetes clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	NonfatalErrorCheck(err, true)
+
+	// Send the event to the dashboard
+	_, err = clientset.CoreV1().Events("apps").Create(context.Background(), event, metav1.CreateOptions{})
+	NonfatalErrorCheck(err, true)
+	log.Print("Event sent\n")
 }
