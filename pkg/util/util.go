@@ -136,25 +136,6 @@ func WriteEvent(podName string, reason bool, message map[string][]string) {
 	// set a name that will change even for duplicate pods
 	eventName := podName + FormatTime()
 
-	//event := corev1.Event{
-	//	TypeMeta:            metav1.TypeMeta{},
-	//	ObjectMeta:          metav1.ObjectMeta{},
-	//	InvolvedObject:      corev1.ObjectReference{},
-	//	Reason:              "Pod Denied",
-	//	Message:             totMess,
-	//	Source:              corev1.EventSource{},
-	//	FirstTimestamp:      metav1.Time{},
-	//	LastTimestamp:       metav1.Time{},
-	//	Count:               0,
-	//	Type:                "Warning",
-	//	EventTime:           metav1.MicroTime{},
-	//	Series:              nil,
-	//	Action:              "",
-	//	Related:             nil,
-	//	ReportingController: "",
-	//	ReportingInstance:   "",
-	//}
-
 	event := &corev1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      eventName,
@@ -163,7 +144,14 @@ func WriteEvent(podName string, reason bool, message map[string][]string) {
 		InvolvedObject: corev1.ObjectReference{Namespace: "apps"},
 		Reason:         eventReason,
 		Message:        cveMessage,
-		Type:           eventType,
+		FirstTimestamp: metav1.Time{
+			Time: time.Now(),
+		},
+		LastTimestamp: metav1.Time{
+			Time: time.Now(),
+		},
+		Count: 1,
+		Type:  eventType,
 		Source: corev1.EventSource{
 			Component: "the-captains-hook",
 		},
