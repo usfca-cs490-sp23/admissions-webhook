@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    acme.com/lifespan-requested: "7"
+  name: review-dummy
+  namespace: apps
+spec:
+  containers:
+  - image: dummy-that-does-not-exist-anywhere
+    name: review-dummy
+  restartPolicy: Never

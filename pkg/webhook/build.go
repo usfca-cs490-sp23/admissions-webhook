@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"github.com/sirupsen/logrus"
 	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
+	"log"
 	"net/http"
 	"os"
 
@@ -14,12 +15,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var validator *Validator
+var BuildValidator *Validator
 
 // Build builds the webhook
 func Build() {
 	// added for consistent cluster-level policy enforcement
-	validator = ConstructPolicy("webhook/admission_policy.json")
+	BuildValidator = ConstructPolicy("webhook/admission_policy.json")
 
 	// handle our core application
 	http.HandleFunc("/validate-pods", ValidatePod)
@@ -54,7 +55,7 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	out, dashUpdate, err := ValidatePodReview(in.Request)
+	out, dashUpdate, reqType, err := ValidatePodReview(in.Request)
 	if err != nil {
 		e := fmt.Sprintf("could not generate admission response: %v", err)
 		logger.Error(e)
@@ -62,8 +63,11 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the dashboard with the info it needs
-	dashboard.ProcessEvent(dashUpdate)
+	// update the dashboard with the info it needs when handling a pod request
+	if reqType == true {
+		var empt []string
+		dashboard.ProcessEvent(dashUpdate, reqType, empt)
+	}
 
 	// set the response's header type to json
 	w.Header().Set("Content-Type", "application/json")
@@ -123,18 +127,53 @@ func reviewAdmission(r http.Request) (*admissionv1.AdmissionReview, error) {
 
 // ValidatePodReview Take a K8s admission request and return a review struct based on,
 // whether or not it is accepted into the cluster
-func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.AdmissionReview, dashboard.DashboardUpdate, error) {
+func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.AdmissionReview, dashboard.DashboardUpdate, bool, error) {
 	pod, err := extractPod(request)
 	if err != nil {
 		//e := fmt.Sprintf("could not parse pod in admission review request: %v", err)
-		return nil, dashboard.BadPodDashUpdate(), err
+		return nil, dashboard.BadPodDashUpdate(), true, err
+	}
+
+	// when the thing requested is a cluster review and not an actual pod admission
+	if pod.Spec.Containers[0].Image == "dummy-that-does-not-exist-anywhere" {
+		// run the actual validation code
+		resList, err := ClusterReview()
+		log.Println("Review complete")
+
+		// good admission review so no bad event get triggered
+		review := &admissionv1.AdmissionReview{
+			TypeMeta: metav1.TypeMeta{
+				Kind:       "AdmissionReview",
+				APIVersion: "admission.k8s.io/v1",
+			},
+			Response: &admissionv1.AdmissionResponse{
+				UID:     request.UID,
+				Allowed: true,
+				Result: &metav1.Status{
+					Code:    http.StatusAccepted,
+					Message: "Cluster integrity validated",
+				},
+			},
+		}
+
+		// empty dashboard struct bc it won't be used later
+		update := dashboard.DashboardUpdate{
+			CVEList: nil,
+			Denied:  false,
+			PodName: "",
+		}
+
+		// make a dashboard event for this review
+		dashboard.ProcessEvent(update, false, resList)
+
+		return review, update, false, err
 	}
 
 	//v := validation.NewValidator(a.Logger)
-	podDecision, err := validator.checkPodImages(pod)
+	podDecision, err := BuildValidator.checkPodImages(pod)
 	if err != nil {
 		//e := fmt.Sprintf("could not validate pod: %v", err)
-		return nil, dashboard.BadPodDashUpdate(), err
+		return nil, dashboard.BadPodDashUpdate(), true, err
 	}
 
 	// if the pod is scanned and allowed, then return this review struct
@@ -152,7 +191,7 @@ func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.Admi
 					Message: "Pod scanned and admitted",
 				},
 			},
-		}, podDecision, nil
+		}, podDecision, true, nil
 	} else {
 		// if the pod is reviewed and disalloed CVEs are found, return this rejection review
 		return &admissionv1.AdmissionReview{
@@ -168,7 +207,7 @@ func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.Admi
 					Message: "Pod scanned and denied",
 				},
 			},
-		}, podDecision, nil
+		}, podDecision, true, nil
 	}
 }
 

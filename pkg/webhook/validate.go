@@ -8,6 +8,10 @@ import (
 	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
 	"os/exec"
@@ -53,7 +57,7 @@ func convertSeverityString(severity string) int {
 		sevVal = 2
 	} else if severity == "High" {
 		sevVal = 3
-	} else if severity == "Critical" {
+	} else if severity == "Critical" || severity == "Unknown" {
 		sevVal = 4
 	} else {
 		// if it is "Unknown" then assume the worst,
@@ -151,6 +155,8 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 			}
 		}
 	}
+	log.Print("CVEList: ")
+	log.Println(cveList)
 	return cveList
 }
 
@@ -225,6 +231,9 @@ func dbStore(dbIName string, monthNum int, sbomValue string) {
 func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, error) {
 	containers := pod.Spec.Containers
 
+	log.Printf("Severity: %d\n", v.Severity)
+	log.Println(v.WhiteList["id_whitelist"])
+
 	failure := false
 	// make a map[string][]string to store image name as key, and it's cveList as value
 	imageCVEMap := make(map[string][]string)
@@ -277,4 +286,71 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 
 	log.Print("validate.go: checkPodImages -> " + podName + " was accepted")
 	return dashboard.DashboardUpdate{Denied: false, CVEList: imageCVEMap, PodName: podName}, nil
+}
+
+// ClusterReview runs inside the cluster and uses the cluster context to get all the running pods and
+// store them as a list of corev1.Pods for making sure the security policy is continually enforced
+func ClusterReview() ([]string, error) {
+	var podRemovedList []string
+	var config *rest.Config
+	var err error
+
+	// Load kubeconfig from $HOME/.kube/config or in-cluster configuration (should always be using kubeconfig)
+	if _, err := os.Stat(os.Getenv("HOME") + "/.kube/config"); err == nil {
+		config, err = clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	} else {
+		config, err = rest.InClusterConfig()
+	}
+
+	// this is essentially a full failure
+	if err == rest.ErrNotInCluster {
+		fmt.Println("NOT IN CLUSTER")
+		log.Print("NOT IN CLUSTER")
+		return nil, err
+	}
+
+	//
+	clientset, err := kubernetes.NewForConfig(config)
+	//if err != nil {
+	//	panic(err.Error())
+	//}
+
+	// TODO: error handling everywhere
+
+	// get pods in all the namespaces by omitting namespace
+	// Or specify namespace to get pods in particular namespace
+	// Namespaces to ignore: "local-path-storage", "kind-system"
+	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
+	if err != nil {
+		log.Print("Pod list not found\n")
+	}
+	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
+
+	// set new validator
+	BuildValidator = ConstructPolicy("webhook/admission_policy.json")
+
+	// iterate through every pod in all namespaces
+	for _, pod := range pods.Items {
+		// don't evict control plane pods, redis pod, or the webhook
+		if pod.Namespace != "kind-system" && pod.Namespace != "local-path-storage" && pod.Namespace != "kube-system" && pod.Namespace != "kubernetes-dashboard" && pod.Name != "redis" && !strings.Contains(pod.Name, "the-captains-hook") {
+			// check that this pod follows the new security policy
+			update, err := BuildValidator.checkPodImages(&pod)
+			if err != nil {
+				// TODO: something
+			}
+
+			// if the pod breaks security, then evict it from the cluster
+			if update.Denied == true {
+				err := clientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+				if err != nil {
+					log.Printf("Pod: %s failed to be properly removed during policy re-enforcement.\n", pod.Name)
+				}
+				log.Println("Removed Pod: " + pod.Name)
+				// save the removed pods to show user
+				podRemovedList = append(podRemovedList, pod.Name)
+			}
+		}
+	}
+
+	return podRemovedList, nil
 }

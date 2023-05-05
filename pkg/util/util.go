@@ -113,7 +113,7 @@ func InjectYamlCA(target, template, injectable string) {
 	WriteFile(target, config)
 }
 
-func WriteEvent(podName string, reason bool, message map[string][]string) {
+func WritePodEvent(podName string, reason bool, message map[string][]string) {
 	var newMess string
 	var cveMessage string
 	for key, val := range message {
@@ -144,6 +144,63 @@ func WriteEvent(podName string, reason bool, message map[string][]string) {
 		InvolvedObject: corev1.ObjectReference{Namespace: "apps"},
 		Reason:         eventReason,
 		Message:        cveMessage,
+		FirstTimestamp: metav1.Time{
+			Time: time.Now(),
+		},
+		LastTimestamp: metav1.Time{
+			Time: time.Now(),
+		},
+		Count: 1,
+		Type:  eventType,
+		Source: corev1.EventSource{
+			Component: "the-captains-hook",
+		},
+	}
+
+	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	event.APIVersion = "v1"
+
+	var config *rest.Config
+	var err error
+	// Load kubeconfig from $HOME/.kube/config or in-cluster configuration
+	if _, err = os.Stat(os.Getenv("HOME") + "/.kube/config"); err == nil {
+		config, err = clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	} else {
+		config, err = rest.InClusterConfig()
+	}
+	NonfatalErrorCheck(err, true)
+
+	// Create Kubernetes clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	NonfatalErrorCheck(err, true)
+
+	// Send the event to the dashboard
+	_, err = clientset.CoreV1().Events("apps").Create(context.Background(), event, metav1.CreateOptions{})
+	NonfatalErrorCheck(err, true)
+	log.Print("Event sent\n")
+}
+
+// WriteRedeployEvent sends an event with the results of a cluster re-validation
+func WriteRedeployEvent(reason string, evictionList []string) {
+	evictedPods := ""
+	for _, evicted := range evictionList {
+		evictedPods = evictedPods + evicted
+	}
+
+	var eventReason = reason
+	eventType := "Normal"
+
+	// set a name that will change even for duplicate pods
+	eventName := "" + FormatTime()
+
+	event := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      eventName,
+			Namespace: "apps",
+		},
+		InvolvedObject: corev1.ObjectReference{Namespace: "apps"},
+		Reason:         eventReason,
+		Message:        evictedPods,
 		FirstTimestamp: metav1.Time{
 			Time: time.Now(),
 		},

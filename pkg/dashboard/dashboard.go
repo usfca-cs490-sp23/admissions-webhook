@@ -94,8 +94,13 @@ func OpenLink(link string) {
 }
 
 // ProcessEvent takes a filled out Dash struct and puts it's info into a dashboard event
-func ProcessEvent(update DashboardUpdate) {
-	util.WriteEvent(update.PodName, update.Denied, update.CVEList)
+func ProcessEvent(update DashboardUpdate, eventTypePod bool, infoList []string) {
+	if eventTypePod == true {
+		util.WritePodEvent(update.PodName, update.Denied, update.CVEList)
+	} else {
+		util.WriteRedeployEvent("Redeploy event", infoList)
+	}
+
 }
 
 // BadPodDashUpdate TODO: expand this to have field values expressing that the pod could not be examined

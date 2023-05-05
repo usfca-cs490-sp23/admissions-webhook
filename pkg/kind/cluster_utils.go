@@ -110,8 +110,10 @@ func FindPod(pods []Pod, target_name string) *Pod {
 	// Loop through pods
 	for i := range pods {
 		// If there is a match, return it
-		if string(pods[i].Name[0:len(target_name)]) == target_name {
-			return &pods[i]
+		if len(string(pods[i].Name)) >= len(target_name) {
+			if string(pods[i].Name[0:len(target_name)]) == target_name {
+				return &pods[i]
+			}
 		}
 	}
 	return nil
@@ -295,6 +297,34 @@ func CreateRoles() {
 	// kubectl create clusterrolebinding dashboard --clusterrole=cluster-admin --serviceaccount=default:default
 	// Create command
 	cmd := exec.Command("kubectl", "create", "clusterrolebinding", "dashboard", "--clusterrole=cluster-admin", "--serviceaccount=default:default")
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+// DeletePod takes a pod namespace and its name in order to delete it from a cluster
+func DeletePod(namespace string, name string) {
+	// Create command
+	cmd := exec.Command("kubectl", "delete", "pod", "-n", namespace, name)
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+// CopyPolicy copy the policy to the webhook so it can be applied
+func CopyPolicy(hookName string) {
+	// final command should look like: kubectl cp ./pkg/webhook/admission_policy.json default/the-captains-hook-646c87d54-nlqqx:webhook/admission_policy.json
+	// Create command
+	target := "default/" + hookName + ":webhook/admission_policy.json"
+	cmd := exec.Command("kubectl", "cp", "./pkg/webhook/admission_policy.json", target)
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 
