@@ -311,11 +311,9 @@ func ClusterReview() ([]string, error) {
 
 	//
 	clientset, err := kubernetes.NewForConfig(config)
-	//if err != nil {
-	//	panic(err.Error())
-	//}
-
-	// TODO: error handling everywhere
+	if err != nil {
+		util.NonfatalErrorCheck(err, false)
+	}
 
 	// get pods in all the namespaces by omitting namespace
 	// Or specify namespace to get pods in particular namespace
@@ -336,7 +334,7 @@ func ClusterReview() ([]string, error) {
 			// check that this pod follows the new security policy
 			update, err := BuildValidator.checkPodImages(&pod)
 			if err != nil {
-				// TODO: something
+				util.NonfatalErrorCheck(err, true)
 			}
 
 			// if the pod breaks security, then evict it from the cluster
