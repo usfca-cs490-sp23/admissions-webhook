@@ -54,16 +54,16 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: use DashUpdate for passing to whatever code will eventually get written to show results on the K8s Dashboard
-	// out, dashUpdate, err := ValidatePodReview(in.Request)
-	// TODO: use above line once k8s dashboard interaction is needed
-	out, _, err := ValidatePodReview(in.Request)
+	out, dashUpdate, err := ValidatePodReview(in.Request)
 	if err != nil {
 		e := fmt.Sprintf("could not generate admission response: %v", err)
 		logger.Error(e)
 		http.Error(w, e, http.StatusInternalServerError)
 		return
 	}
+
+	// update the dashboard with the info it needs
+	dashboard.ProcessEvent(dashUpdate)
 
 	// set the response's header type to json
 	w.Header().Set("Content-Type", "application/json")

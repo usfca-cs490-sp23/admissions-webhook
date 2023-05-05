@@ -1,12 +1,21 @@
 package util
 
 import (
+	"context"
 	"flag"
+	"fmt"
 	"io"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	_ "k8s.io/client-go/applyconfigurations/core/v1"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
+	"k8s.io/client-go/tools/clientcmd"
 	"log"
 	"os"
 	"strings"
-    "time"
+	"time"
+
+	corev1 "k8s.io/api/core/v1"
 )
 
 // NotYetImplemented Helper method to panic and trace to source method for unimplemented code
@@ -28,11 +37,11 @@ func IsFlagRaised(flag_name string) bool {
 // FatalErrorCheck Helper method to crash if errors exist
 func FatalErrorCheck(err error, verbose bool) {
 	if err != nil {
-        if verbose {
-            log.Print("\nERROR Fatal: " + err.Error() + "\n")
-        } else {
-            log.Print(err)
-        }
+		if verbose {
+			log.Print("\nERROR Fatal: " + err.Error() + "\n")
+		} else {
+			log.Print(err)
+		}
 		log.Fatal(err)
 	}
 }
@@ -40,11 +49,11 @@ func FatalErrorCheck(err error, verbose bool) {
 // NonfatalErrorCheck Helper method to output present errors but not crash
 func NonfatalErrorCheck(err error, verbose bool) {
 	if err != nil {
-        if verbose {
-            log.Print("\nERROR Nonfatal: " + err.Error() + "\n")
-        } else {
-            log.Print(err)
-        }
+		if verbose {
+			log.Print("\nERROR Nonfatal: " + err.Error() + "\n")
+		} else {
+			log.Print(err)
+		}
 	}
 }
 
@@ -102,4 +111,71 @@ func InjectYamlCA(target, template, injectable string) {
 
 	// Now write to file
 	WriteFile(target, config)
+}
+
+func WriteEvent(podName string, reason bool, message map[string][]string) {
+	var newMess string
+	var cveMessage string
+	for key, val := range message {
+		// Convert each key/value pair in m to a string
+		newMess = fmt.Sprintf("%s=\"%s\"", key, val)
+		cveMessage = cveMessage + newMess
+	}
+
+	var eventReason string
+	var eventType string
+	// if true then the pod was denied
+	if reason {
+		eventReason = "Pod Denied"
+		eventType = "Warning"
+	} else {
+		eventReason = "Pod accepted"
+		eventType = "Normal"
+	}
+
+	// set a name that will change even for duplicate pods
+	eventName := podName + FormatTime()
+
+	event := &corev1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      eventName,
+			Namespace: "apps",
+		},
+		InvolvedObject: corev1.ObjectReference{Namespace: "apps"},
+		Reason:         eventReason,
+		Message:        cveMessage,
+		FirstTimestamp: metav1.Time{
+			Time: time.Now(),
+		},
+		LastTimestamp: metav1.Time{
+			Time: time.Now(),
+		},
+		Count: 1,
+		Type:  eventType,
+		Source: corev1.EventSource{
+			Component: "the-captains-hook",
+		},
+	}
+
+	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	event.APIVersion = "v1"
+
+	var config *rest.Config
+	var err error
+	// Load kubeconfig from $HOME/.kube/config or in-cluster configuration
+	if _, err = os.Stat(os.Getenv("HOME") + "/.kube/config"); err == nil {
+		config, err = clientcmd.BuildConfigFromFlags("", os.Getenv("HOME")+"/.kube/config")
+	} else {
+		config, err = rest.InClusterConfig()
+	}
+	NonfatalErrorCheck(err, true)
+
+	// Create Kubernetes clientset
+	clientset, err := kubernetes.NewForConfig(config)
+	NonfatalErrorCheck(err, true)
+
+	// Send the event to the dashboard
+	_, err = clientset.CoreV1().Events("apps").Create(context.Background(), event, metav1.CreateOptions{})
+	NonfatalErrorCheck(err, true)
+	log.Print("Event sent\n")
 }

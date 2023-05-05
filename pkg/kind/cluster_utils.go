@@ -2,12 +2,13 @@ package kind
 
 import (
 	"fmt"
-	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"log"
 	"os"
 	"os/exec"
 	"regexp"
 	"strings"
+
+	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
 
 // Pod struct for wide output of kubectl get pods
@@ -200,6 +201,8 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// not actually making a config map, its a service, but its the same command
 	CreateConfigMap("./pkg/webhook/database/redis-service-config.yaml")
 
+	// setup cluster roles, so that events are properly sent
+	CreateRoles()
 }
 
 // GenCerts Method to generate TLS certifications and cluster configs
@@ -250,14 +253,16 @@ func DescribeHook(hook_name string) {
 // AddPod Method to add a pod
 func AddPod(pod_config_path string) {
 	// Create command
-	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
+	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path, "--alsologtostderr")
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 
 	// Run and handle errors
 	err := cmd.Run()
-	// Crash if error
-	util.NonfatalErrorCheck(err, true)
+	//if error create custom event
+	if err != nil {
+		fmt.Printf("pod/%s denied\n", pod_config_path)
+	}
 }
 
 // CreateConfigMap method to create a new ConfigMap for a pod
@@ -277,6 +282,19 @@ func CreateConfigMap(config_path string) {
 func DeleteItem(type_, name string) {
 	// Create command
 	cmd := exec.Command("kubectl", "delete", type_, name)
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+func CreateRoles() {
+	// kubectl create clusterrolebinding dashboard --clusterrole=cluster-admin --serviceaccount=default:default
+	// Create command
+	cmd := exec.Command("kubectl", "create", "clusterrolebinding", "dashboard", "--clusterrole=cluster-admin", "--serviceaccount=default:default")
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 
