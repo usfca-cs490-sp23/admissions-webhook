@@ -69,10 +69,6 @@ func main() {
 
 	// Reconfigure the cluster
 	if util.IsFlagRaised("reconfigure") {
-		// Apply configs
-		// kind.ApplyConfig("./pkg/cluster-config")
-		// kind.ApplyConfig("./pkg/webhook/deploy-rules")
-
 		// Get the webhook's pod's full name
 		pods := kind.GetPodsStruct("kind-control-plane")
 		hookPod := kind.FindPod(pods, "the-captains-hook")
