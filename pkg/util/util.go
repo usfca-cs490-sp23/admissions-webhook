@@ -5,15 +5,17 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"log"
+	"os"
+	"regexp"
+	"strings"
+	"time"
+
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	_ "k8s.io/client-go/applyconfigurations/core/v1"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
-	"log"
-	"os"
-	"strings"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 )
@@ -111,6 +113,16 @@ func InjectYamlCA(target, template, injectable string) {
 
 	// Now write to file
 	WriteFile(target, config)
+}
+
+func ChangeConfig(level string, path string) {
+	content := ReadFile(path)
+	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
+	new_level := "\"severity_limit\": \"" + level + "\","
+
+	content = r.ReplaceAllString(content, new_level)
+
+	WriteFile(path, content)
 }
 
 func WritePodEvent(podName string, reason bool, message map[string][]string) {

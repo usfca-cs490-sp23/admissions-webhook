@@ -3,6 +3,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"strings"
+
 	"github.com/usfca-cs490/admissions-webhook/pkg/audit"
 	"github.com/usfca-cs490/admissions-webhook/pkg/dashboard"
 	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
@@ -23,7 +25,7 @@ func main() {
 	// Print webhook pod status flag
 	flag.Bool("hook", false, "start webhook, should only be called by Docker container")
 	// Reconfigure cluster flag
-	flag.Bool("reconfigure", false, "reconfigure the cluster")
+	reconfig_val := flag.String("reconfigure", "", "reconfigure the cluster")
 	// Audit the cluster
 	flag.Bool("audit", false, "audit the cluster for vulnerabilities")
 	// Display logs
@@ -69,6 +71,9 @@ func main() {
 
 	// Reconfigure the cluster
 	if util.IsFlagRaised("reconfigure") {
+		if len(strings.TrimSpace(*reconfig_val)) != 0 {
+			util.ChangeConfig(*reconfig_val, "./pkg/webhook/admission_policy.json")
+		}
 		// Get the webhook's pod's full name
 		pods := kind.GetPodsStruct("kind-control-plane")
 		hookPod := kind.FindPod(pods, "the-captains-hook")
