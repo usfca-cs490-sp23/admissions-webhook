@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"regexp"
 	"strings"
+	"time"
 
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
@@ -110,8 +111,10 @@ func FindPod(pods []Pod, target_name string) *Pod {
 	// Loop through pods
 	for i := range pods {
 		// If there is a match, return it
-		if string(pods[i].Name[0:len(target_name)]) == target_name {
-			return &pods[i]
+		if len(string(pods[i].Name)) >= len(target_name) {
+			if string(pods[i].Name[0:len(target_name)]) == target_name {
+				return &pods[i]
+			}
 		}
 	}
 	return nil
@@ -164,6 +167,8 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 
 	// Create command
 	os.Setenv("DOCKER_BUILDKIT", "1")
+	// Get time for benchmarking build time
+	loadHookStart := time.Now()
 	cmd := exec.Command("docker", "build", "-t", (image_name + ":" + version), dfile_path)
 	cmd.Stderr = os.Stderr
 
@@ -171,6 +176,9 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	err := cmd.Run()
 	// Crash if error
 	util.FatalErrorCheck(err, true)
+
+	//Get build time benchmark benchmark
+	buildTime := (time.Since(loadHookStart))
 
 	// Status print
 	fmt.Println("Loading Docker image", (image_name + ":" + version))
@@ -190,6 +198,11 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 
 	// write the default data to the user file to allow redis into the cluster
 	util.WriteFile("./pkg/webhook/admission_policy.json", defaultContents)
+
+	//If the amount of time to build is less than 12 seconds, wait until 12 have elapsed
+	//to allow sufficient time for default namespace to be setup before redis enters cluster
+	t, _ := time.ParseDuration("12s")
+	time.Sleep(time.Duration(t.Nanoseconds() - buildTime.Nanoseconds()))
 
 	// Configure and apply redis
 	CreateConfigMap("./pkg/webhook/database/redis-config.yaml")
@@ -253,9 +266,10 @@ func DescribeHook(hook_name string) {
 // AddPod Method to add a pod
 func AddPod(pod_config_path string) {
 	// Create command
-	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path, "--alsologtostderr")
+	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	// Run and handle errors
 	err := cmd.Run()
@@ -295,6 +309,34 @@ func CreateRoles() {
 	// kubectl create clusterrolebinding dashboard --clusterrole=cluster-admin --serviceaccount=default:default
 	// Create command
 	cmd := exec.Command("kubectl", "create", "clusterrolebinding", "dashboard", "--clusterrole=cluster-admin", "--serviceaccount=default:default")
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+// DeletePod takes a pod namespace and its name in order to delete it from a cluster
+func DeletePod(namespace string, name string) {
+	// Create command
+	cmd := exec.Command("kubectl", "delete", "pod", "-n", namespace, name)
+	// Redirect stdout
+	cmd.Stdout = os.Stdout
+
+	// Run and handle errors
+	err := cmd.Run()
+	// Crash if error
+	util.NonfatalErrorCheck(err, true)
+}
+
+// CopyPolicy copy the policy to the webhook so it can be applied
+func CopyPolicy(hookName string) {
+	// final command should look like: kubectl cp ./pkg/webhook/admission_policy.json default/the-captains-hook-646c87d54-nlqqx:webhook/admission_policy.json
+	// Create command
+	target := "default/" + hookName + ":webhook/admission_policy.json"
+	cmd := exec.Command("kubectl", "cp", "./pkg/webhook/admission_policy.json", target)
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 

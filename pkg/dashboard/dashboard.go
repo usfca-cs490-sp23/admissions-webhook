@@ -7,7 +7,7 @@ import (
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 )
 
-// DashboardUpdate TODO: Return a DashboardUpdate struct with the result of checking the internals of the pod
+// DashboardUpdate struct for storing results that are eventually sent in an event to the dashboard
 type DashboardUpdate struct {
 	CVEList map[string][]string
 	Denied  bool
@@ -94,11 +94,16 @@ func OpenLink(link string) {
 }
 
 // ProcessEvent takes a filled out Dash struct and puts it's info into a dashboard event
-func ProcessEvent(update DashboardUpdate) {
-	util.WriteEvent(update.PodName, update.Denied, update.CVEList)
+func ProcessEvent(update DashboardUpdate, eventTypePod bool, infoList []string) {
+	if eventTypePod == true {
+		util.WritePodEvent(update.PodName, update.Denied, update.CVEList)
+	} else {
+		util.WriteRedeployEvent("Redeploy event", infoList)
+	}
+
 }
 
-// BadPodDashUpdate TODO: expand this to have field values expressing that the pod could not be examined
+// BadPodDashUpdate a failover func for when things really go sideways
 func BadPodDashUpdate() DashboardUpdate {
 	return DashboardUpdate{Denied: true}
 }
