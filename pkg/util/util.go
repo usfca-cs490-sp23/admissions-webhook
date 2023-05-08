@@ -115,16 +115,18 @@ func InjectYamlCA(target, template, injectable string) {
 	WriteFile(target, config)
 }
 
-func ChangeConfig(level string, path string) {
+// ChangeConfig method to change severity level inside configuration file
+func ChangeConfig(level, path string) {
 	content := ReadFile(path)
 	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
-	new_level := "\"severity_limit\": \"" + level + "\","
+	newLevel := "\"severity_limit\": \"" + level + "\","
 
-	content = r.ReplaceAllString(content, new_level)
+	content = r.ReplaceAllString(content, newLevel)
 
 	WriteFile(path, content)
 }
 
+// WritePodEvent method to send an event to the dashbaord using the container v1 core API
 func WritePodEvent(podName string, reason bool, message map[string][]string) {
 	var newMess string
 	var cveMessage string
@@ -136,7 +138,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 
 	var eventReason string
 	var eventType string
-	// if true then the pod was denied
+	// If true then the pod was denied
 	if reason {
 		eventReason = "Pod Denied"
 		eventType = "Warning"
@@ -145,7 +147,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 		eventType = "Normal"
 	}
 
-	// set a name that will change even for duplicate pods
+	// Set a name that will change even for duplicate pods
 	eventName := podName + FormatTime()
 
 	event := &corev1.Event{
@@ -169,7 +171,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 		},
 	}
 
-	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	// Set the api version (doing here bc I keep getting warnings when I put it in the struct)
 	event.APIVersion = "v1"
 
 	var config *rest.Config
@@ -202,7 +204,7 @@ func WriteRedeployEvent(reason string, evictionList []string) {
 	var eventReason = reason
 	eventType := "Normal"
 
-	// set a name that will change even for duplicate pods
+	// Set a name that will change even for duplicate pods
 	eventName := "" + FormatTime()
 
 	event := &corev1.Event{
@@ -226,7 +228,7 @@ func WriteRedeployEvent(reason string, evictionList []string) {
 		},
 	}
 
-	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	// Set the api version (doing here bc I keep getting warnings when I put it in the struct)
 	event.APIVersion = "v1"
 
 	var config *rest.Config
