@@ -57,7 +57,7 @@ Shutting down the cluster can be done with another wrapper method:
 | Flag           | Arg (blank if bool)   | Description                 |
 |----------------|-----------------------|-----------------------------|
 | `-h`           |                       | get list of flags |
-| `-add`         | path to yaml file     | attempt to add a pod to the cluster (default "./pkg/kind/test-pods/hello-good.yaml") |
+| `-add`         | path to yaml file     | attempt to add a pod to the cluster (default "./pkg/cluster/test-pods/hello-good.yaml") |
 | `-audit`       |                       | audit the cluster for vulnerabilities |
 | `-create`      |                       | create a kind cluster |
 | `-dashboard`   |                       | launch cluster dashboard  |
@@ -66,6 +66,7 @@ Shutting down the cluster can be done with another wrapper method:
 | `-logstream`   |                       | stream webhook logs to terminal |
 | `-pods`        |                       | show all pods in the kind-control-plane node |
 | `-reconfigure` | path to reconfig file | reconfigure the cluster |
+| `-severity`    | level                 | update severity level to one of following: critical, high, medium, low, negligible |
 | `-shutdown`    |                       | shutdown the cluster |
 | `-status`      |                       | print out description of webhook pod |
 
@@ -73,7 +74,7 @@ To add a pod is a simple wrapper on the standard applying functionality:
 
 `go run main.go -add <path-to-.yaml-file>`
 
-The wehbook can be tested with three test pods stored in `pkg/kind/test-pods/` by running:
+The wehbook can be tested with three test pods stored in `pkg/cluster/test-pods/` by running:
 
 `go test ./tests/webhook/ -v`
 
@@ -95,6 +96,13 @@ A full list of functionalities can be seen by running `go run main.go -h`
 │   ├── audit
 │   │   ├── auditor.go
 │   │   └── auditor.yaml
+│   ├── cluster
+│   │   ├── cluster_utils.go
+│   │   ├── kind.cluster.yaml
+│   │   └── test-pods
+│   │       ├── alpine-good.yaml
+│   │       ├── hello-good.yaml
+│   │       └── nginx-fail.yaml
 │   ├── cluster-config
 │   │   ├── app.ns.yaml
 │   │   ├── validating.config.template.yaml
@@ -105,13 +113,6 @@ A full list of functionalities can be seen by running `go run main.go -h`
 │   │   └── dashboard.go
 │   ├── evals
 │   │   └── test.json
-│   ├── kind
-│   │   ├── cluster_utils.go
-│   │   ├── kind.cluster.yaml
-│   │   └── test-pods
-│   │       ├── alpine-good.yaml
-│   │       ├── hello-good.yaml
-│   │       └── nginx-fail.yaml
 │   ├── sboms
 │   │   └── test.json
 │   ├── tls
@@ -130,6 +131,7 @@ A full list of functionalities can be seen by running `go run main.go -h`
 │       │   ├── webhook.svc.yaml
 │       │   └── webhook.tls.secret.yaml
 │       ├── policy_accepted_parameters.txt
+│       ├── review-dummy.yaml
 │       └── validate.go
 ├── README.md
 └── tests
@@ -138,5 +140,5 @@ A full list of functionalities can be seen by running `go run main.go -h`
     └── webhook
         └── webhook_test.go
 
-16 directories, 34 files
+16 directories, 35 files
 ```

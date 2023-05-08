@@ -3,7 +3,7 @@ package audit
 import (
 	"bytes"
 	"fmt"
-	"github.com/usfca-cs490/admissions-webhook/pkg/kind"
+	"github.com/usfca-cs490/admissions-webhook/pkg/cluster"
 	"github.com/usfca-cs490/admissions-webhook/pkg/util"
 	"os"
 	"os/exec"
@@ -32,14 +32,14 @@ func filterAudit(results string) {
 // Audit audits a cluster by sending in a kubeaudit image
 func Audit() {
 	// Create the command to add the auditor pod to the cluster
-	kind.AddPod("./pkg/audit/auditor.yaml")
+	cluster.AddPod("./pkg/audit/auditor.yaml")
 
 	// Wait for five seconds for the container to create
 	time.Sleep(5 * time.Second)
 
 	// Get the kubeaudit pod's full name
-	pods := kind.GetPodsStruct("kind-control-plane")
-	kubeauditPod := kind.FindPod(pods, "kubeaudit")
+	pods := cluster.GetPodsStruct("kind-control-plane")
+	kubeauditPod := cluster.FindPod(pods, "kubeaudit")
 
 	// Create the command to add the auditor pod to the cluster
 	cmd := exec.Command("kubectl", "logs", string(kubeauditPod.Name))
@@ -57,7 +57,7 @@ func Audit() {
 
 	filterAudit(results.String())
 	// Delete all kubeaudit pods so that it can be rerun later
-	kind.DeleteItem("pod", string(kubeauditPod.Name))
-	kind.DeleteItem("serviceaccount", "kubeaudit")
-	kind.DeleteItem("job.batch", "kubeaudit")
+	cluster.DeleteItem("pod", string(kubeauditPod.Name))
+	cluster.DeleteItem("serviceaccount", "kubeaudit")
+	cluster.DeleteItem("job.batch", "kubeaudit")
 }
