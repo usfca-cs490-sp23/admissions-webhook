@@ -16,16 +16,14 @@ This project requires the following dependencies:
 
 - [Docker](https://www.docker.com/products/docker-desktop/)
 
-- [Syft](https://github.com/anchore/syft)
-
-- [Grype](https://github.com/anchore/grype)
-
 - [Openssl](https://github.com/openssl/openssl)
 
 - Clipboard Tool
     - xclip (Linux)
     - pbcopy (macOS)
     - clip (Windows)
+
+NOTE: An internet connection is required to run the webhook
 
 ### Installing
 
@@ -56,20 +54,20 @@ Shutting down the cluster can be done with another wrapper method:
 
 ### Further Functionalities
 
-| Flag           | Arg (blank if bool)| Description                 |
-|----------------|--------------------|-----------------------------|
-| `-h`           |                    | get list of flags |
-| `-add`         | path to yaml file  | attempt to add a pod to the cluster (default "./pkg/kind/test-pods/hello-good.yaml") |
-| `-audit`       |                    | audit the cluster for vulnerabilities |
-| `-create`      |                    | create a kind cluster |
-| `-dashboard`   |                    | launch cluster dashboard  |
-| `-deploy`      |                    | apply admissions webhook to cluster |
-| `-info`        |                    | get cluster info |
-| `-logstream`   |                    | stream webhook logs to terminal |
-| `-pods`        |                    | show all pods in the kind-control-plane node |
-| `-reconfigure` |                    | reconfigure the cluster |
-| `-shutdown`    |                    | shutdown the cluster |
-| `-status`      |                    | print out description of webhook pod |
+| Flag           | Arg (blank if bool)   | Description                 |
+|----------------|-----------------------|-----------------------------|
+| `-h`           |                       | get list of flags |
+| `-add`         | path to yaml file     | attempt to add a pod to the cluster (default "./pkg/kind/test-pods/hello-good.yaml") |
+| `-audit`       |                       | audit the cluster for vulnerabilities |
+| `-create`      |                       | create a kind cluster |
+| `-dashboard`   |                       | launch cluster dashboard  |
+| `-deploy`      |                       | apply admissions webhook to cluster |
+| `-info`        |                       | get cluster info |
+| `-logstream`   |                       | stream webhook logs to terminal |
+| `-pods`        |                       | show all pods in the kind-control-plane node |
+| `-reconfigure` | path to reconfig file | reconfigure the cluster |
+| `-shutdown`    |                       | shutdown the cluster |
+| `-status`      |                       | print out description of webhook pod |
 
 To add a pod is a simple wrapper on the standard applying functionality:
 
