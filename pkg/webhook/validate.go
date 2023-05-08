@@ -60,8 +60,8 @@ func convertSeverityString(severity string) int {
 	} else if severity == "Critical" || severity == "Unknown" {
 		sevVal = 4
 	} else {
-		// if it is "Unknown" then assume the worst,
-		// or "Setup" is for pre-approved pods as part of the cluster starting
+		// If it is "Unknown" then assume the worst,
+		// 	or "Setup" is for pre-approved pods as part of the cluster starting
 		sevVal = 5
 	}
 	return sevVal
@@ -80,23 +80,23 @@ func compareSeverity(givenSeverity string, limit int) bool {
 
 // ConstructPolicy reads in the admission_policy.json file and parses it into usable data via the Policy struct
 func ConstructPolicy(policyFile string) *Validator {
-	// read the file back in as a string
+	// Read the file back in as a string
 	rawContent := util.ReadFile(policyFile)
 
-	// read the admission policy into the custom struct
+	// Read the admission policy into the custom struct
 	var policyInfo Policy
 	_ = json.Unmarshal([]byte(rawContent), &policyInfo)
 
-	// get the severity limit and convert to int for easier comparisons
+	// Get the severity limit and convert to int for easier comparisons
 	rawSeverity := policyInfo.SeverityLimit
 	severityLimit := convertSeverityString(rawSeverity)
-	// make a map to speed up search time later (essentailly making a set)
+	// Make a map to speed up search time later (essentailly making a set)
 	whiteListMap := make(map[string]struct{})
 	for _, id := range policyInfo.Whitelist {
 		whiteListMap[id] = struct{}{}
 	}
 
-	// return the two pieces of info needed to enforce the policy in a Validator literal
+	// Return the two pieces of info needed to enforce the policy in a Validator literal
 	return &Validator{severityLimit, whiteListMap}
 }
 
@@ -109,7 +109,7 @@ func generateSBOM(outfile, image string, monthInt int) {
 	util.FatalErrorCheck(err, true)
 	log.Print("validate.go: GenerateSBOM -> created SBOM for " + image + " and stored at " + outfile)
 
-	// add info to db
+	// Add info to db
 	dbStore(image, monthInt, string(out))
 
 	// Write output to file
@@ -121,7 +121,7 @@ func generateSBOM(outfile, image string, monthInt int) {
 // checks if that image breaks the security rules (has "Critical" rated CVEs),
 // and returns false if the rules are not broken
 func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteListMap map[string]struct{}) []string {
-	// run grype command
+	// Run grype command
 	givenSBOM := "sbom:./" + sbomFile
 	// To scan an SBOM: grype sbom:./example.json
 	log.Print("validate.go: evaluateImage -> running grype on SBOM at " + givenSBOM)
@@ -130,27 +130,25 @@ func evaluateImage(sbomFile string, imageName string, severityLimit int, whiteLi
 	util.FatalErrorCheck(err, true)
 	log.Print("validate.go: evaluateImage -> grype ran successfully")
 
-	// Got rid of extra file IO here, big win
-
-	// create and populate a struct that is tailor-made for the json structure output by grype
+	// Create and populate a struct that is tailor-made for the json structure output by grype
 	var result Evaluation
 	_ = json.Unmarshal(out, &result)
 
-	// list to store each CVE that breaks policy from this image
+	// List to store each CVE that breaks policy from this image
 	var cveList []string
 
-	// result is now a list of matches that can be iterated through
+	// Result is now a list of matches that can be iterated through
 	for i := 0; i < len(result.Matches); i++ {
-		// get the current CVE id and severity level
+		// Get the current CVE id and severity level
 		currID := result.Matches[i].Vulnerability.ID
 		currSeverity := result.Matches[i].Vulnerability.Severity
-		// if not within the limit, check the whitelist
+		// If not within the limit, check the whitelist
 		if !compareSeverity(currSeverity, severityLimit) {
-			// don't care about the value, just whether or not the id exists in the white-list (present is a bool)
+			// Don't care about the value, just whether or not the id exists in the white-list (present is a bool)
 			_, present := whiteListMap[currID]
-			// if not in the whitelist
+			// If not in the whitelist
 			if !present {
-				// add to the list of CVEs that break policy
+				// Add to the list of CVEs that break policy
 				cveList = append(cveList, currID)
 			}
 		}
@@ -181,30 +179,28 @@ func dbLookup(dbIName string, monthNum int) (sbomData string, err error) {
 	val, err := client.Get(ctx, dbKey).Result()
 
 	// Look for current first, then if not present look for old, if old present remove, then generate new (and put later)
-	// key did not exist
+	// Key did not exist
 	if err == redis.Nil {
 		oldKey := dbIName + lastMonth
 		val, err = client.Get(ctx, oldKey).Result()
 		if err == redis.Nil {
 			return "", err
 		}
-		// remove old and return redis.nil to trigger new sbom spawn
+		// Remove old and return redis.nil to trigger new sbom spawn
 		_, err = client.Del(ctx, oldKey).Result()
 		return "", redis.Nil
 	}
 
-	if err != nil {
-		util.FatalErrorCheck(err, true)
-	}
+	util.FatalErrorCheck(err, true)
 
-	// found a proper sbom so no need to gen new sbom
+	// Found a proper sbom so no need to gen new sbom
 	return val, nil
 }
 
 // dbStore stores an SBOM given it's name and the value of the sbom
 func dbStore(dbIName string, monthNum int, sbomValue string) {
 	// Get the redis pod's data
-	// get evirnoment variable REDIS_SERVICE_CONFIG_SERVICE_HOST
+	// Get evirnoment variable REDIS_SERVICE_CONFIG_SERVICE_HOST
 	redisPodIp := os.Getenv("REDIS_SERVICE_CONFIG_SERVICE_HOST")
 	log.Print("REDIS IP STORE" + redisPodIp)
 	client := redis.NewClient(&redis.Options{
@@ -235,13 +231,13 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 	log.Println(v.WhiteList["id_whitelist"])
 
 	failure := false
-	// make a map[string][]string to store image name as key, and it's cveList as value
+	// Make a map[string][]string to store image name as key, and it's cveList as value
 	imageCVEMap := make(map[string][]string)
 	for _, container := range containers {
-		// get the time to make the file names unique
+		// Get the time to make the file names unique
 		timeRaw := util.FormatTime()
 
-		// parse name, try to grab from db, if fail or different month, make new sbom and send to db
+		// Parse name, try to grab from db, if fail or different month, make new sbom and send to db
 		monthString := strings.Split(timeRaw, "-")[1]
 		monthInt, _ := strconv.Atoi(monthString)
 		sbomVal, err := dbLookup(container.Image, monthInt)
@@ -249,24 +245,24 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 		// EX: sboms/nginx_sbom_2023-3-20_17-57-50.json
 		sbomName := fmt.Sprintf("sboms/%s_sbom_%s.json", container.Image, timeRaw)
 
-		// no db entry, gen new and store
+		// No db entry, gen new and store
 		if err == redis.Nil {
 			generateSBOM(sbomName, container.Image, monthInt)
 		} else {
-			// if db entry write to temp file
+			// If db entry write to temp file
 			util.WriteFile(sbomName, sbomVal)
 		}
 
 		grypeRes := evaluateImage(sbomName, container.Image, v.Severity, v.WhiteList)
 		log.Print("validate.go: checkPodImages -> successfully evaluated vulnerabilities")
 
-		// if any CVE's broke policy then add this image to the map of bad images
+		// If any CVE's broke policy then add this image to the map of bad images
 		if len(grypeRes) > 0 {
 			imageCVEMap[container.Image] = grypeRes
 			failure = true
 		}
 
-		// make a daemon to delete temp file
+		// Make a daemon to delete temp file
 		go func(filename string) {
 			err := os.Remove(filename)
 			if err != nil {
@@ -275,10 +271,10 @@ func (v *Validator) checkPodImages(pod *corev1.Pod) (dashboard.DashboardUpdate, 
 		}(sbomName)
 	}
 
-	// get the pod name for the print-out
+	// Get the pod name for the print-out
 	podName := pod.ObjectMeta.Name
 
-	// currently rejects any pod with an image containing a Critical level CVE
+	// Currently rejects any pod with an image containing a Critical level CVE
 	if failure {
 		log.Print("validate.go: checkPodImages -> " + podName + " was denied")
 		return dashboard.DashboardUpdate{Denied: true, CVEList: imageCVEMap, PodName: podName}, nil
@@ -302,49 +298,44 @@ func ClusterReview() ([]string, error) {
 		config, err = rest.InClusterConfig()
 	}
 
-	// this is essentially a full failure
+	// This is essentially a full failure
 	if err == rest.ErrNotInCluster {
 		fmt.Println("NOT IN CLUSTER")
 		log.Print("NOT IN CLUSTER")
 		return nil, err
 	}
 
-	//
 	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		util.NonfatalErrorCheck(err, false)
-	}
+	util.NonfatalErrorCheck(err, false)
 
-	// get pods in all the namespaces by omitting namespace
-	// Or specify namespace to get pods in particular namespace
-	// Namespaces to ignore: "local-path-storage", "kind-system"
+	// Get pods in all the namespaces by omitting namespace
+	// 	Or specify namespace to get pods in particular namespace
+	// 	Namespaces to ignore: "local-path-storage", "kind-system"
 	pods, err := clientset.CoreV1().Pods("").List(context.TODO(), metav1.ListOptions{})
 	if err != nil {
 		log.Print("Pod list not found\n")
 	}
 	fmt.Printf("There are %d pods in the cluster\n", len(pods.Items))
 
-	// set new validator
+	// Set new validator
 	BuildValidator = ConstructPolicy("webhook/admission_policy.json")
 
-	// iterate through every pod in all namespaces
+	// Iterate through every pod in all namespaces
 	for _, pod := range pods.Items {
-		// don't evict control plane pods, redis pod, or the webhook
+		// Don't evict control plane pods, redis pod, or the webhook
 		if pod.Namespace != "kind-system" && pod.Namespace != "local-path-storage" && pod.Namespace != "kube-system" && pod.Namespace != "kubernetes-dashboard" && pod.Name != "redis" && !strings.Contains(pod.Name, "the-captains-hook") {
-			// check that this pod follows the new security policy
+			// Check that this pod follows the new security policy
 			update, err := BuildValidator.checkPodImages(&pod)
-			if err != nil {
-				util.NonfatalErrorCheck(err, true)
-			}
+			util.NonfatalErrorCheck(err, true)
 
-			// if the pod breaks security, then evict it from the cluster
+			// If the pod breaks security, then evict it from the cluster
 			if update.Denied == true {
 				err := clientset.CoreV1().Pods(pod.Namespace).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
 				if err != nil {
 					log.Printf("Pod: %s failed to be properly removed during policy re-enforcement.\n", pod.Name)
 				}
 				log.Println("Removed Pod: " + pod.Name)
-				// save the removed pods to show user
+				// Save the removed pods to show user
 				podRemovedList = append(podRemovedList, pod.Name)
 			}
 		}

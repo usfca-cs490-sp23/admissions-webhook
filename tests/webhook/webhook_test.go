@@ -8,7 +8,7 @@ import (
 
 // TestWebhook test case for two good pods and one bad one
 func TestWebhook(t *testing.T) {
-	// THe pods to test (name of their config file without path or extension
+	// The pods to test (name of their config file without path or extension
 	test_pods := []string{"hello-good", "alpine-good", "nginx-bad"}
 
 	// Loop through pods

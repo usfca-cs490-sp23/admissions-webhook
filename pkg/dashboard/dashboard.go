@@ -1,6 +1,7 @@
 package dashboard
 
 import (
+	"fmt"
 	"os/exec"
 	"runtime"
 
@@ -16,41 +17,42 @@ type DashboardUpdate struct {
 
 // DashInit initiates the dashboard on user's local computer
 func DashInit() {
+	// Execute dashboard command
 	cmd := exec.Command("kubectl", "apply", "-f", "https://raw.githubusercontent.com/kubernetes/dashboard/v2.7.0/aio/deploy/recommended.yaml")
 	// Run and handle errors
 	err := cmd.Run()
 	util.NonfatalErrorCheck(err, false)
 
-	print("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/\n")
+	// Send user instructions to command line
+	fmt.Println("go to: http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
 	DashUser("./pkg/dashboard/dashboard-adminuser.yaml", "./pkg/dashboard/admin-rb.yaml")
 	OpenLink("http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/")
 	RunDashboard()
-
-	//go to http://localhost:8001/api/v1/namespaces/kubernetes-dashboard/services/https:kubernetes-dashboard:/proxy/ to access
 }
 
 // DashUser creates a new user account via K8's Service Account mechanism
-func DashUser(adminUser string, adminRb string) {
-	//create admin service account (see dashboard-adminuser.yaml)
+func DashUser(adminUser, adminRb string) {
+	// Create admin service account (see dashboard-adminuser.yaml)
 	cmd := exec.Command("kubectl", "apply", "-f", adminUser)
 	err := cmd.Run()
 	util.NonfatalErrorCheck(err, false)
 
-	//create cluster role binding (see admin-rb.yaml)
+	// Create cluster role binding (see admin-rb.yaml)
 	cmd = exec.Command("kubectl", "apply", "-f", adminRb)
 	err = cmd.Run()
 	util.NonfatalErrorCheck(err, false)
 
-	//name of the service account
+	// Name of the service account
 	saName := "admin-user"
 
+	// Create a token
 	tkn := exec.Command("kubectl", "-n", "kubernetes-dashboard", "create", "token", saName)
-	print("and enter token: ")
+	// Give user to token, along with usage instructions
+	fmt.Print("and enter token: ")
 	out, err := tkn.CombinedOutput()
-	print(string(out))
+	fmt.Print(string(out))
 	util.NonfatalErrorCheck(err, false)
 	CopyTkn(string(out))
-
 }
 
 // CopyTkn copies the bearer token (for login) to the user's clipboard

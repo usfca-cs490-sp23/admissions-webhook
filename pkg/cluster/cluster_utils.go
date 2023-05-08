@@ -2,7 +2,6 @@ package cluster
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -38,17 +37,17 @@ var SeverityLvls = map[string]bool{
 // GetPodName get an argued pod's name
 func GetPodName(pod_name string) string {
 	// Call kubectl describe on the argued pod name
-	hook_desc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
+	hookDesc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
 	// Crash if there is an error
 	util.FatalErrorCheck(err, true)
 
 	// Extract just the name from the description
-	hook_desc_str := string(hook_desc)
-	hook_desc_str = hook_desc_str[0:strings.Index(hook_desc_str, "\n")]
-	hook_desc_str = strings.Trim(strings.TrimPrefix(hook_desc_str, "Name:"), " ")
+	hookDescStr := string(hookDesc)
+	hookDescStr = hookDescStr[0:strings.Index(hookDescStr, "\n")]
+	hookDescStr = strings.Trim(strings.TrimPrefix(hookDescStr, "Name:"), " ")
 
 	// Return the name
-	return hook_desc_str
+	return hookDescStr
 }
 
 // StreamLogs send the logs to stdout
@@ -166,9 +165,8 @@ func Info() {
 	cmd.Stderr = os.Stderr
 
 	// Run and handle errors
-	if err := cmd.Run(); err != nil {
-		log.Fatal("startup.go: FAILED TO GET CLUSTER INFO")
-	}
+	err := cmd.Run()
+	util.FatalErrorCheck(err, false)
 }
 
 // BuildLoadHookImage Method to build an image from a specified Dockerfile
@@ -276,7 +274,7 @@ func DescribeHook(hook_name string) {
 	util.NonfatalErrorCheck(err, true)
 }
 
-// AddPod Method to add a pod
+// AddPod method to add a pod
 func AddPod(pod_config_path string) {
 	// Create command
 	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
@@ -286,10 +284,7 @@ func AddPod(pod_config_path string) {
 
 	// Run and handle errors
 	err := cmd.Run()
-	//if error create custom event
-	if err != nil {
-		fmt.Printf("pod/%s denied\n", pod_config_path)
-	}
+	util.FatalErrorCheck(err, false)
 }
 
 // CreateConfigMap method to create a new ConfigMap for a pod
@@ -347,7 +342,6 @@ func DeletePod(namespace string, name string) {
 
 // CopyPolicy copy the policy to the webhook so it can be applied
 func CopyPolicy(hookName string) {
-	// final command should look like: kubectl cp ./pkg/webhook/admission_policy.json default/the-captains-hook-646c87d54-nlqqx:webhook/admission_policy.json
 	// Create command
 	target := "default/" + hookName + ":webhook/admission_policy.json"
 	cmd := exec.Command("kubectl", "cp", "./pkg/webhook/admission_policy.json", target)
@@ -362,11 +356,16 @@ func CopyPolicy(hookName string) {
 
 // ChangeConfig method to change severity level inside configuration file
 func ChangeConfig(level, path string) {
+	// Read in policy file
 	content := util.ReadFile(path)
+	// Use regex to get the severity limit
 	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
+	// Create the new severity limit line
 	newLevel := "\"severity_limit\": \"" + level + "\","
 
+	// Replace the old severity limit with the new one
 	content = r.ReplaceAllString(content, newLevel)
 
+	// Write to file with only severity limit changed
 	util.WriteFile(path, content)
 }

@@ -88,9 +88,9 @@ func WriteFile(outfile, data string) {
 
 // FormatTime generates a string of the current time for naming files
 func FormatTime() string {
-	// make filename based off of current time (lazy but effective)
+	// Make filename based off of current time (lazy but effective)
 	currTime := time.Now()
-	// format is from the docs, plz don't change it bc the date is based on the underlying schema used by the Format()
+	// Format is from the docs, the date is based on the underlying schema used by the Format()
 	fileName := currTime.Format("2006-1-2_15-4-5")
 	return fileName
 }
@@ -159,7 +159,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 		},
 	}
 
-	// Set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	// Set the api version
 	event.APIVersion = "v1"
 
 	var config *rest.Config
@@ -216,7 +216,7 @@ func WriteRedeployEvent(reason string, evictionList []string) {
 		},
 	}
 
-	// Set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	// Set the api version
 	event.APIVersion = "v1"
 
 	var config *rest.Config

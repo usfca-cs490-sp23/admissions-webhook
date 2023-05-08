@@ -19,20 +19,20 @@ var BuildValidator *Validator
 
 // Build builds the webhook
 func Build() {
-	// added for consistent cluster-level policy enforcement
+	// Added for consistent cluster-level policy enforcement
 	BuildValidator = ConstructPolicy("webhook/admission_policy.json")
 
-	// handle our core application
+	// Handle our core application
 	http.HandleFunc("/validate-pods", ValidatePod)
 
-	// start the server
-	// listens to clear text http on port 8080 unless TLS env var is set to "true" (which it should be)
+	// Start the server
+	// 	Listens to clear text http on port 8080 unless TLS env var is set to "true" (which it should be)
 	if os.Getenv("TLS") == "true" {
-		// these are the mount path in the webhook.deploy.yaml file for tls
+		// These are the mount path in the webhook.deploy.yaml file for tls
 		cert := "/etc/admission-webhook/tls/tls.crt"
 		key := "/etc/admission-webhook/tls/tls.key"
 
-		// it should ALWAYS be true for us I believe
+		// It should ALWAYS be true
 		logrus.Fatal(http.ListenAndServeTLS(":443", cert, key, nil))
 	} else {
 		logrus.Print("Listening on port 8080...")
@@ -42,13 +42,13 @@ func Build() {
 
 // ValidatePod validates an admission request and then writes an admission review to response writer
 func ValidatePod(w http.ResponseWriter, r *http.Request) {
-	// special logging stuff
+	// Special logging stuff
 	logger := logrus.WithField("uri", r.RequestURI)
 	logger.Debug("received validation request")
 
-	// get the information from the request
+	// Get the information from the request
 	in, err := reviewAdmission(*r)
-	// if there was an error, handle it here
+	// If there was an error, handle it here
 	if err != nil {
 		logger.Error(err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -63,17 +63,17 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// update the dashboard with the info it needs when handling a pod request
+	// Update the dashboard with the info it needs when handling a pod request
 	if reqType == true {
 		var empt []string
 		dashboard.ProcessEvent(dashUpdate, reqType, empt)
 	}
 
-	// set the response's header type to json
+	// Set the response's header type to json
 	w.Header().Set("Content-Type", "application/json")
-	// takes the admision review struct and turns it into json
+	// Takes the admision review struct and turns it into json
 	jout, err := json.Marshal(out)
-	// if Marshal() fails, log the error and exits the function
+	// If Marshal() fails, log the error and exits the function
 	if err != nil {
 		e := fmt.Sprintf("could not parse admission response: %v", err)
 		logger.Error(e)
@@ -83,12 +83,11 @@ func ValidatePod(w http.ResponseWriter, r *http.Request) {
 
 	logger.Debug("sending response")
 	logger.Debugf("%s", jout)
-	// same as sprinf in C
+	// Same as sprinf in C
 	fmt.Fprintf(w, "%s", jout)
 }
 
-// Either returns an admission review struct or an error
-// reviewAdmission extracts an AdmissionReview from an http.Request if possible
+// reviewAdmission extracts an AdmissionReview from an http.Request if possible, returns an admission review struct or an error
 func reviewAdmission(r http.Request) (*admissionv1.AdmissionReview, error) {
 	// Check if the given content is JSON, and if not, then return nil and log what kind of content was given
 	if r.Header.Get("Content-Type") != "application/json" {
@@ -96,51 +95,49 @@ func reviewAdmission(r http.Request) (*admissionv1.AdmissionReview, error) {
 			r.Header.Get("Content-Type"), "application/json")
 	}
 
-	// create a buffer to read all the data from the body of the request
-	// then denote that buffer as byte data
+	// Create a buffer to read all the data from the body of the request
+	// 	then denote that buffer as byte data
 	bodybuf := new(bytes.Buffer)
 	bodybuf.ReadFrom(r.Body)
 	body := bodybuf.Bytes()
 
-	// if the body is empty, then return nil and log the error
+	// If the body is empty, then return nil and log the error
 	if len(body) == 0 {
 		return nil, fmt.Errorf("admission request body is empty")
 	}
 
-	// create an AdmissionReview object to store the data in
+	// Create an AdmissionReview object to store the data in
 	var a admissionv1.AdmissionReview
 
 	// Unmarshal() takes a byte array (in this case body) and an empty pointer (a) to store the results into
-	// if it cannot be unmarshalled then return nil and log the error
+	// 	if it cannot be unmarshalled then return nil and log the error
 	if err := json.Unmarshal(body, &a); err != nil {
 		return nil, fmt.Errorf("could not parse admission review request: %v", err)
 	}
 
-	// if the AdmissionReview's request field is empty, retun nil and log the error
+	// If the AdmissionReview's request field is empty, retun nil and log the error
 	if a.Request == nil {
 		return nil, fmt.Errorf("admission review can't be used: Request field is nil")
 	}
 
-	// return the AdmissionReview struct and nil for error
+	// Return the AdmissionReview struct and nil for error
 	return &a, nil
 }
 
-// ValidatePodReview Take a K8s admission request and return a review struct based on,
-// whether or not it is accepted into the cluster
+// ValidatePodReview Take a K8s admission request and return a review struct based on, whether or not it is accepted into the cluster
 func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.AdmissionReview, dashboard.DashboardUpdate, bool, error) {
 	pod, err := extractPod(request)
 	if err != nil {
-		//e := fmt.Sprintf("could not parse pod in admission review request: %v", err)
 		return nil, dashboard.BadPodDashUpdate(), true, err
 	}
 
-	// when the thing requested is a cluster review and not an actual pod admission
+	// When the thing requested is a cluster review and not an actual pod admission
 	if pod.Spec.Containers[0].Image == "dummy-that-does-not-exist-anywhere" {
-		// run the actual validation code
+		// Run the actual validation code
 		resList, err := ClusterReview()
 		log.Println("Review complete")
 
-		// good admission review so no bad event get triggered
+		// Good admission review so no bad event get triggered
 		review := &admissionv1.AdmissionReview{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "AdmissionReview",
@@ -156,27 +153,25 @@ func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.Admi
 			},
 		}
 
-		// empty dashboard struct bc it won't be used later
+		// Empty dashboard struct bc it won't be used later
 		update := dashboard.DashboardUpdate{
 			CVEList: nil,
 			Denied:  false,
 			PodName: "",
 		}
 
-		// make a dashboard event for this review
+		// Make a dashboard event for this review
 		dashboard.ProcessEvent(update, false, resList)
 
 		return review, update, false, err
 	}
 
-	//v := validation.NewValidator(a.Logger)
 	podDecision, err := BuildValidator.checkPodImages(pod)
 	if err != nil {
-		//e := fmt.Sprintf("could not validate pod: %v", err)
 		return nil, dashboard.BadPodDashUpdate(), true, err
 	}
 
-	// if the pod is scanned and allowed, then return this review struct
+	// If the pod is scanned and allowed, then return this review struct
 	if !podDecision.Denied {
 		return &admissionv1.AdmissionReview{
 			TypeMeta: metav1.TypeMeta{
@@ -193,7 +188,7 @@ func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.Admi
 			},
 		}, podDecision, true, nil
 	} else {
-		// if the pod is reviewed and disalloed CVEs are found, return this rejection review
+		// If the pod is reviewed and disalloed CVEs are found, return this rejection review
 		return &admissionv1.AdmissionReview{
 			TypeMeta: metav1.TypeMeta{
 				Kind:       "AdmissionReview",
@@ -214,11 +209,11 @@ func ValidatePodReview(request *admissionv1.AdmissionRequest) (*admissionv1.Admi
 // extractPod given an admission request, extract and return a Pod
 func extractPod(request *admissionv1.AdmissionRequest) (*corev1.Pod, error) {
 	pod := corev1.Pod{}
-	// if the pod ain't right, throw an error and return
+	// If the pod ain't right, throw an error and return
 	if err := json.Unmarshal(request.Object.Raw, &pod); err != nil {
 		return nil, err
 	}
 
-	// otherwise return the
+	// Otherwise return the
 	return &pod, nil
 }
