@@ -11,7 +11,7 @@ import (
 /* Test case to check that all external dependencies are present on the system */
 func TestDependencies(t *testing.T) {
 	// Array of dependencies
-	dependencies := []string{"kind", "kubectl", "syft", "grype", "openssl", "docker"}
+	dependencies := []string{"kind", "kubectl", "openssl", "docker"}
 
 	op_sys := runtime.GOOS
 	if op_sys == "windows" {
