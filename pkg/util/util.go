@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -113,17 +112,6 @@ func InjectYamlCA(target, template, injectable string) {
 
 	// Now write to file
 	WriteFile(target, config)
-}
-
-// ChangeConfig method to change severity level inside configuration file
-func ChangeConfig(level, path string) {
-	content := ReadFile(path)
-	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
-	newLevel := "\"severity_limit\": \"" + level + "\","
-
-	content = r.ReplaceAllString(content, newLevel)
-
-	WriteFile(path, content)
 }
 
 // WritePodEvent method to send an event to the dashbaord using the container v1 core API

@@ -1,10 +1,11 @@
-package kind
+package cluster
 
 import (
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
+	"regexp"
 	"strings"
 	"time"
 
@@ -23,6 +24,15 @@ type Pod struct {
 	Node            []byte
 	Nominated_node  []byte
 	Readiness_gates []byte
+}
+
+// Set of acceptable severity levels
+var SeverityLvls = map[string]bool{
+	"critical":   true,
+	"high":       true,
+	"medium":     true,
+	"low":        true,
+	"negligible": true,
 }
 
 // GetPodName get an argued pod's name
@@ -348,4 +358,15 @@ func CopyPolicy(hookName string) {
 	err := cmd.Run()
 	// Crash if error
 	util.NonfatalErrorCheck(err, true)
+}
+
+// ChangeConfig method to change severity level inside configuration file
+func ChangeConfig(level, path string) {
+	content := util.ReadFile(path)
+	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
+	newLevel := "\"severity_limit\": \"" + level + "\","
+
+	content = r.ReplaceAllString(content, newLevel)
+
+	util.WriteFile(path, content)
 }
