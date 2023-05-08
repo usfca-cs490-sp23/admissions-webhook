@@ -56,7 +56,6 @@ func main() {
 
 	// Launch kind cluster interface
 	if util.IsFlagRaised("dashboard") {
-		//util.NotYetImplemented("dashboard")
 		dashboard.DashInit()
 	}
 
@@ -90,7 +89,9 @@ func main() {
 	if util.IsFlagRaised("severity") {
 		// If argued level is valid, reconfigure the severity in admission_policy file
 		if _, ok := cluster.SeverityLvls[strings.ToLower(*severity)]; ok {
-			cluster.ChangeConfig(*severity, "./pkg/webhook/admission_policy.json")
+			cluster.ChangeConfig(strings.ToUpper(string((*severity)[0]))+string((*severity)[1:]), "./pkg/webhook/admission_policy.json")
+		} else {
+			fmt.Println("severity: invalid param \"" + *severity + "\". Please select either critical, high, medium, low, or negligible.")
 		}
 	}
 
