@@ -1,8 +1,7 @@
-package kind
+package cluster
 
 import (
 	"fmt"
-	"log"
 	"os"
 	"os/exec"
 	"regexp"
@@ -26,20 +25,29 @@ type Pod struct {
 	Readiness_gates []byte
 }
 
+// Set of acceptable severity levels
+var SeverityLvls = map[string]bool{
+	"critical":   true,
+	"high":       true,
+	"medium":     true,
+	"low":        true,
+	"negligible": true,
+}
+
 // GetPodName get an argued pod's name
 func GetPodName(pod_name string) string {
 	// Call kubectl describe on the argued pod name
-	hook_desc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
+	hookDesc, err := exec.Command("kubectl", "describe", "pod", pod_name).Output()
 	// Crash if there is an error
 	util.FatalErrorCheck(err, true)
 
 	// Extract just the name from the description
-	hook_desc_str := string(hook_desc)
-	hook_desc_str = hook_desc_str[0:strings.Index(hook_desc_str, "\n")]
-	hook_desc_str = strings.Trim(strings.TrimPrefix(hook_desc_str, "Name:"), " ")
+	hookDescStr := string(hookDesc)
+	hookDescStr = hookDescStr[0:strings.Index(hookDescStr, "\n")]
+	hookDescStr = strings.Trim(strings.TrimPrefix(hookDescStr, "Name:"), " ")
 
 	// Return the name
-	return hook_desc_str
+	return hookDescStr
 }
 
 // StreamLogs send the logs to stdout
@@ -71,34 +79,36 @@ func GetPods(node_name string) []byte {
 // GetPodsStruct gets the pod data from kubectl and stores the results in an array of structs
 func GetPodsStruct(node_name string) []Pod {
 	// Get the pods using kubectl wide option
-	get_pods := GetPods(node_name)
-
-	// Generate regex that matches all the words in a string
-	re := regexp.MustCompile(`\S+`)
+	getPods := string(GetPods(node_name))
+	podStats := strings.Split(getPods, "\n")
 
 	// Initialize a new list of Pods
-	var pods []Pod = make([]Pod, strings.Count(string(get_pods), "\n"))
-
-	// Get all of the matches
-	matches := (re.FindAll(get_pods, -1))
+	var pods []Pod = make([]Pod, len(podStats)-1)
 
 	// Initialize the counter of pods in the array
 	podCtr := 0
 
 	// Loop through the matches (ignoring the header)
-	for i := 12; i < len(matches); i += 10 {
+	for _, stat := range podStats[1:] {
+		// Get fields between whitespaces
+		fields := strings.Fields(stat)
+		// If there are not ten fields, this is incomplete data, do not add it to struct
+		if len(fields) != 10 {
+			continue
+		}
+
 		// Store the relevant fields in a struct within the pods array
 		pods[podCtr] = Pod{
-			Namespace:       matches[i],
-			Name:            matches[i+1],
-			Ready:           matches[i+2],
-			Status:          matches[i+3],
-			Restarts:        matches[i+4],
-			Age:             matches[i+5],
-			Ip:              matches[i+6],
-			Node:            matches[i+7],
-			Nominated_node:  matches[i+8],
-			Readiness_gates: matches[i+9],
+			Namespace:       []byte(fields[0]),
+			Name:            []byte(fields[1]),
+			Ready:           []byte(fields[2]),
+			Status:          []byte(fields[3]),
+			Restarts:        []byte(fields[4]),
+			Age:             []byte(fields[5]),
+			Ip:              []byte(fields[6]),
+			Node:            []byte(fields[7]),
+			Nominated_node:  []byte(fields[8]),
+			Readiness_gates: []byte(fields[9]),
 		}
 		podCtr++
 	}
@@ -155,9 +165,8 @@ func Info() {
 	cmd.Stderr = os.Stderr
 
 	// Run and handle errors
-	if err := cmd.Run(); err != nil {
-		log.Fatal("startup.go: FAILED TO GET CLUSTER INFO")
-	}
+	err := cmd.Run()
+	util.FatalErrorCheck(err, false)
 }
 
 // BuildLoadHookImage Method to build an image from a specified Dockerfile
@@ -177,7 +186,7 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// Crash if error
 	util.FatalErrorCheck(err, true)
 
-	//Get build time benchmark benchmark
+	// Get build time benchmark benchmark
 	buildTime := (time.Since(loadHookStart))
 
 	// Status print
@@ -191,16 +200,16 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	// Crash if error
 	util.FatalErrorCheck(err, true)
 
-	// using hidden policy file trickery to let the redis pod in at startup
+	// Using hidden policy file trickery to let the redis pod in at startup
 	// read in each file and store the data
 	userContents := util.ReadFile("./pkg/webhook/admission_policy.json")
 	defaultContents := util.ReadFile("./pkg/webhook/.default_policy.json")
 
-	// write the default data to the user file to allow redis into the cluster
+	// Write the default data to the user file to allow redis into the cluster
 	util.WriteFile("./pkg/webhook/admission_policy.json", defaultContents)
 
-	//If the amount of time to build is less than 12 seconds, wait until 12 have elapsed
-	//to allow sufficient time for default namespace to be setup before redis enters cluster
+	// If the amount of time to build is less than 12 seconds, wait until 12 have elapsed
+	// 	to allow sufficient time for default namespace to be setup before redis enters cluster
 	t, _ := time.ParseDuration("12s")
 	time.Sleep(time.Duration(t.Nanoseconds() - buildTime.Nanoseconds()))
 
@@ -208,14 +217,16 @@ func BuildLoadHookImage(image_name, version, dfile_path string) {
 	CreateConfigMap("./pkg/webhook/database/redis-config.yaml")
 	AddPod("./pkg/webhook/database/redis-pod.yaml")
 
-	// now write back the user info
+	// Now write back the user info
 	util.WriteFile("./pkg/webhook/admission_policy.json", userContents)
 
-	// not actually making a config map, its a service, but its the same command
+	// Not actually making a config map, its a service, but its the same command
 	CreateConfigMap("./pkg/webhook/database/redis-service-config.yaml")
 
-	// setup cluster roles, so that events are properly sent
-	CreateRoles()
+	// Set up cluster role so that events are properly sent
+	CreateAdminRole("dashboard", "default:default")
+	// Set up cluster role for kubeaoudit
+	CreateAdminRole("daemonsets.apps", "default:kubeaudit")
 }
 
 // GenCerts Method to generate TLS certifications and cluster configs
@@ -263,7 +274,7 @@ func DescribeHook(hook_name string) {
 	util.NonfatalErrorCheck(err, true)
 }
 
-// AddPod Method to add a pod
+// AddPod method to add a pod
 func AddPod(pod_config_path string) {
 	// Create command
 	cmd := exec.Command("kubectl", "apply", "-f", pod_config_path)
@@ -273,10 +284,7 @@ func AddPod(pod_config_path string) {
 
 	// Run and handle errors
 	err := cmd.Run()
-	//if error create custom event
-	if err != nil {
-		fmt.Printf("pod/%s denied\n", pod_config_path)
-	}
+	util.FatalErrorCheck(err, false)
 }
 
 // CreateConfigMap method to create a new ConfigMap for a pod
@@ -305,10 +313,11 @@ func DeleteItem(type_, name string) {
 	util.NonfatalErrorCheck(err, true)
 }
 
-func CreateRoles() {
+// CreateAdminRole method to create a clusterrolebinding within the cluster with admin level priveleges
+func CreateAdminRole(name, serviceacc string) {
 	// kubectl create clusterrolebinding dashboard --clusterrole=cluster-admin --serviceaccount=default:default
 	// Create command
-	cmd := exec.Command("kubectl", "create", "clusterrolebinding", "dashboard", "--clusterrole=cluster-admin", "--serviceaccount=default:default")
+	cmd := exec.Command("kubectl", "create", "clusterrolebinding", name, "--clusterrole=cluster-admin", "--serviceaccount="+serviceacc)
 	// Redirect stdout
 	cmd.Stdout = os.Stdout
 
@@ -333,7 +342,6 @@ func DeletePod(namespace string, name string) {
 
 // CopyPolicy copy the policy to the webhook so it can be applied
 func CopyPolicy(hookName string) {
-	// final command should look like: kubectl cp ./pkg/webhook/admission_policy.json default/the-captains-hook-646c87d54-nlqqx:webhook/admission_policy.json
 	// Create command
 	target := "default/" + hookName + ":webhook/admission_policy.json"
 	cmd := exec.Command("kubectl", "cp", "./pkg/webhook/admission_policy.json", target)
@@ -344,4 +352,20 @@ func CopyPolicy(hookName string) {
 	err := cmd.Run()
 	// Crash if error
 	util.NonfatalErrorCheck(err, true)
+}
+
+// ChangeConfig method to change severity level inside configuration file
+func ChangeConfig(level, path string) {
+	// Read in policy file
+	content := util.ReadFile(path)
+	// Use regex to get the severity limit
+	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
+	// Create the new severity limit line
+	newLevel := "\"severity_limit\": \"" + level + "\","
+
+	// Replace the old severity limit with the new one
+	content = r.ReplaceAllString(content, newLevel)
+
+	// Write to file with only severity limit changed
+	util.WriteFile(path, content)
 }

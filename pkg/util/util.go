@@ -7,7 +7,6 @@ import (
 	"io"
 	"log"
 	"os"
-	"regexp"
 	"strings"
 	"time"
 
@@ -89,9 +88,9 @@ func WriteFile(outfile, data string) {
 
 // FormatTime generates a string of the current time for naming files
 func FormatTime() string {
-	// make filename based off of current time (lazy but effective)
+	// Make filename based off of current time (lazy but effective)
 	currTime := time.Now()
-	// format is from the docs, plz don't change it bc the date is based on the underlying schema used by the Format()
+	// Format is from the docs, the date is based on the underlying schema used by the Format()
 	fileName := currTime.Format("2006-1-2_15-4-5")
 	return fileName
 }
@@ -115,16 +114,7 @@ func InjectYamlCA(target, template, injectable string) {
 	WriteFile(target, config)
 }
 
-func ChangeConfig(level string, path string) {
-	content := ReadFile(path)
-	r, _ := regexp.Compile("\"severity_limit\": [^\n]*")
-	new_level := "\"severity_limit\": \"" + level + "\","
-
-	content = r.ReplaceAllString(content, new_level)
-
-	WriteFile(path, content)
-}
-
+// WritePodEvent method to send an event to the dashbaord using the container v1 core API
 func WritePodEvent(podName string, reason bool, message map[string][]string) {
 	var newMess string
 	var cveMessage string
@@ -136,7 +126,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 
 	var eventReason string
 	var eventType string
-	// if true then the pod was denied
+	// If true then the pod was denied
 	if reason {
 		eventReason = "Pod Denied"
 		eventType = "Warning"
@@ -145,7 +135,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 		eventType = "Normal"
 	}
 
-	// set a name that will change even for duplicate pods
+	// Set a name that will change even for duplicate pods
 	eventName := podName + FormatTime()
 
 	event := &corev1.Event{
@@ -169,7 +159,7 @@ func WritePodEvent(podName string, reason bool, message map[string][]string) {
 		},
 	}
 
-	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	// Set the api version
 	event.APIVersion = "v1"
 
 	var config *rest.Config
@@ -202,7 +192,7 @@ func WriteRedeployEvent(reason string, evictionList []string) {
 	var eventReason = reason
 	eventType := "Normal"
 
-	// set a name that will change even for duplicate pods
+	// Set a name that will change even for duplicate pods
 	eventName := "" + FormatTime()
 
 	event := &corev1.Event{
@@ -226,7 +216,7 @@ func WriteRedeployEvent(reason string, evictionList []string) {
 		},
 	}
 
-	// set the api version (doing here bc I keep getting warnings when I put it in the struct)
+	// Set the api version
 	event.APIVersion = "v1"
 
 	var config *rest.Config

@@ -13,9 +13,6 @@ metadata:
   namespace: default
 spec:
   template:
-    # metadata:
-    #   annotations:
-    #     container.apparmor.security.beta.kubernetes.io/kubeaudit: runtime/default
     spec:
       serviceAccountName: kubeaudit
       restartPolicy: OnFailure
