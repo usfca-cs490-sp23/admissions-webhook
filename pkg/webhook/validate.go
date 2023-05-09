@@ -323,7 +323,7 @@ func ClusterReview() ([]string, error) {
 	// Iterate through every pod in all namespaces
 	for _, pod := range pods.Items {
 		// Don't evict control plane pods, redis pod, or the webhook
-		if pod.Namespace != "kind-system" && pod.Namespace != "local-path-storage" && pod.Namespace != "kube-system" && pod.Namespace != "kubernetes-dashboard" && pod.Name != "redis" && !strings.Contains(pod.Name, "the-captains-hook") {
+		if pod.Namespace != "kind-system" && pod.Namespace != "local-path-storage" && pod.Namespace != "kube-system" && pod.Namespace != "kubernetes-dashboard" && pod.Name != "sbom-cache" && !strings.Contains(pod.Name, "the-captains-hook") {
 			// Check that this pod follows the new security policy
 			update, err := BuildValidator.checkPodImages(&pod)
 			util.NonfatalErrorCheck(err, true)
