@@ -70,6 +70,16 @@ func main() {
 		cluster.ApplyConfig("./pkg/webhook/deploy-rules")
 	}
 
+	// Change severity level
+	if util.IsFlagRaised("severity") {
+		// If argued level is valid, reconfigure the severity in admission_policy file
+		if _, ok := cluster.SeverityLvls[strings.ToLower(*severity)]; ok {
+			cluster.ChangeConfig(strings.ToUpper(string((*severity)[0]))+string((*severity)[1:]), "./pkg/webhook/admission_policy.json")
+		} else {
+			fmt.Println("severity: invalid param \"" + *severity + "\". Please select either critical, high, medium, low, or negligible.")
+		}
+	}
+
 	// Reconfigure the cluster
 	if util.IsFlagRaised("reconfigure") {
 		// Get the webhook's pod's full name
@@ -83,16 +93,6 @@ func main() {
 		cluster.AddPod("./pkg/webhook/review-dummy.yaml")
 		// now remove that erroneous pod
 		cluster.DeletePod("apps", "review-dummy")
-	}
-
-	// Change severity level
-	if util.IsFlagRaised("severity") {
-		// If argued level is valid, reconfigure the severity in admission_policy file
-		if _, ok := cluster.SeverityLvls[strings.ToLower(*severity)]; ok {
-			cluster.ChangeConfig(strings.ToUpper(string((*severity)[0]))+string((*severity)[1:]), "./pkg/webhook/admission_policy.json")
-		} else {
-			fmt.Println("severity: invalid param \"" + *severity + "\". Please select either critical, high, medium, low, or negligible.")
-		}
 	}
 
 	// Audit the cluster using kubeaudit
