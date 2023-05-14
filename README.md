@@ -1,6 +1,6 @@
 # Admissions Webhook
 
-A CLI tool for creating a [Kind](https://kind.sigs.k8s.io/) cluster and deploying a Webhook to it. The purpose of the webhook is to generate a Software Bill of Materials (SBOM) for each image uploaded to the cluster, and then checking it for critical Common Vulnerabilities and Exposures (CVEs). If there are any CVEs that could endanger the cluster, the image will not be allowed in. 
+An ecosystem that uses a Command Line Interface to create a [Kind](https://kind.sigs.k8s.io/) cluster, deploy a Webhook to it, and provide easy access to the Kubernetes Dashboard. The ecosystem has a number of security auditing and reporting features built in. The purpose of the webhook is to generate a Software Bill of Materials (SBOM) for each image uploaded to the cluster, and then checking it for Common Vulnerabilities and Exposures (CVEs). If there any CVEs found that are rated at a severity at or higher than the tolerance specified in the admission policy, the image will not be allowed in. 
 
 ## Installation
 
@@ -52,12 +52,17 @@ Shutting down the cluster can be done with another wrapper method:
 
 `go run main.go -shutdown`
 
+To add a pod is a simple wrapper on the standard applying functionality:
+
+`go run main.go -add <path-to-.yaml-file>`
+
+
 ### Further Functionalities
 
 | Flag           | Arg (blank if bool)   | Description                 |
 |----------------|-----------------------|-----------------------------|
 | `-h`           |                       | get list of flags |
-| `-add`         | path to yaml file     | attempt to add a pod to the cluster (default "./pkg/cluster/test-pods/hello-good.yaml") |
+| `-add`         | path to yaml file     | attempt to add a pod to the cluster |
 | `-audit`       |                       | audit the cluster for vulnerabilities |
 | `-create`      |                       | create a kind cluster |
 | `-dashboard`   |                       | launch cluster dashboard  |
@@ -65,14 +70,11 @@ Shutting down the cluster can be done with another wrapper method:
 | `-info`        |                       | get cluster info |
 | `-logstream`   |                       | stream webhook logs to terminal |
 | `-pods`        |                       | show all pods in the kind-control-plane node |
-| `-reconfigure` | path to reconfig file | reconfigure the cluster |
+| `-reconfigure` |                       | reconfigure the cluster |
 | `-severity`    | level                 | update severity level to one of following: critical, high, medium, low, negligible |
 | `-shutdown`    |                       | shutdown the cluster |
 | `-status`      |                       | print out description of webhook pod |
 
-To add a pod is a simple wrapper on the standard applying functionality:
-
-`go run main.go -add <path-to-.yaml-file>`
 
 The wehbook can be tested with three test pods stored in `pkg/cluster/test-pods/` by running:
 
@@ -80,7 +82,7 @@ The wehbook can be tested with three test pods stored in `pkg/cluster/test-pods/
 
 The webhook can be audited with 
 
-Starting up the K8's dashboard is done with: `go run main.go -dashboard` and then following the steps given once it is started
+Starting up the K8's dashboard is done with: `go run main.go -dashboard` and then following the steps provided in the terminal. NOTE: The dashboard can take up to 30 seconds to generate, so be patient if the page does not load immediately. If nothing pops up automatically, try refreshing.
 
 A full list of functionalities can be seen by running `go run main.go -h`
 
