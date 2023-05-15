@@ -86,6 +86,24 @@ Starting up the K8's dashboard is done with: `go run main.go -dashboard` and the
 
 A full list of functionalities can be seen by running `go run main.go -h`
 
+
+## Configuring Admission Policy
+
+In order to quickly reconfigure the admission severity level, the `-severity [level]` flag fan be used, and then the `-reconfigure` flag can push the new level to the webhook. The severity options are as follows:
+
+- Critical
+- High
+- Medium
+- Low
+- Negligible
+
+The two flags can be run in conjunction like this: `go run main.go -severity High -reconfigure`.
+
+NOTE: The severity flag will only accept valid levels, and is not case-sensitive, although modifying the actual admission policy file stored in `./pkg/webhook/admission_policy.json` has no such validity or case checks, so if you must modify this file directly, be sure to follow the detailed instructions included in `./pkg/webhook/policy_accepted_parameters.txt`.
+
+If needed, CVEs can be added to the whitelist in the admission policy file, but be sure to consult the instructions in `./pkg/webhook/policy_accepted_parameters.txt` before modifying the file.
+
+
 ## Structure
 
 ```
