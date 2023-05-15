@@ -52,7 +52,7 @@ Shutting down the cluster can be done with another wrapper method:
 
 `go run main.go -shutdown`
 
-To add a pod is a simple wrapper on the standard applying functionality:
+To add a pod is a simple wrapper on the standard `kubectl apply` functionality:
 
 `go run main.go -add <path-to-.yaml-file>`
 
@@ -76,20 +76,20 @@ To add a pod is a simple wrapper on the standard applying functionality:
 | `-status`      |                       | print out description of webhook pod |
 
 
-The wehbook can be tested with three test pods stored in `pkg/cluster/test-pods/` by running:
+The webhook can be tested with three test pods stored in `pkg/cluster/test-pods/` by running:
 
 `go test ./tests/webhook/ -v`
 
-The webhook can be audited with 
+The cluster can be audited with the `-audit` flag.
 
-Starting up the K8's dashboard is done with: `go run main.go -dashboard` and then following the steps provided in the terminal. NOTE: The dashboard can take up to 30 seconds to generate, so be patient if the page does not load immediately. If nothing pops up automatically, try refreshing.
+Starting up the K8's dashboard is done with: `go run main.go -dashboard`, and then following the steps provided in the terminal. NOTE: The dashboard can take up to 30 seconds to generate, so be patient if the page does not load immediately. If nothing pops up automatically, try refreshing.
 
 A full list of functionalities can be seen by running `go run main.go -h`
 
 
 ## Configuring Admission Policy
 
-In order to quickly reconfigure the admission severity level, the `-severity [level]` flag fan be used, and then the `-reconfigure` flag can push the new level to the webhook. The severity options are as follows:
+In order to quickly reconfigure the admission severity level, the `-severity [level]` flag can be used, and then the `-reconfigure` flag can push the new level to the webhook. The severity options are as follows:
 
 - Critical
 - High
